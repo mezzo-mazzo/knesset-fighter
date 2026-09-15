@@ -33,6 +33,13 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
       let window_state
       let flow // what the player picked on the way from the front page to the fight
 
+      /* a network game runs in lockstep: both peers replay the same menu flow
+       * and the same simulation, so their random streams have to agree. they
+       * therefore share this fixed seed, while a local session is seeded fresh
+       * on every load (see `create`) so that the 'Random' character and
+       * background picks actually differ from one run to the next. */
+      const network_randomseed = 824163532
+
       this.create = function () {
         require(['core/css!' + pack.path + 'UI/UI.css'], function () { })
 
@@ -171,7 +178,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           return randomseed.next()
         }
         randomseed = new Random()
-        randomseed.seed(824163532)
+        randomseed.seed(Math.floor(Math.random() * 0x7FFFFFFF))
 
         // prepare
         char_list = util.select_from(pack.data.object, { type: 'character' })
@@ -255,6 +262,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                   setup_controllers()
                 }
                 session.network = true
+                randomseed.seed(network_randomseed) // both peers must draw the same numbers
                 if (param.role === 'active') {
                   session.control[0] = new network.controller('local', session.control[0])
                   session.control[1] = new network.controller('local', session.control[1])
