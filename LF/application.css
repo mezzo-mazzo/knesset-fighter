@@ -290,9 +290,7 @@ html, body
 
 /* [--- control settings */
 .keychanger
-{
-	position:absolute;
-	left:140px; top:340px; /* 2x port: 70,160 -> 140,320, plus the leading line break of the old markup */
+{	/* the package stylesheet places it inside the settings panel */
 	text-align:center;
 	display:inline-table;
 }
