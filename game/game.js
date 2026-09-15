@@ -39,7 +39,7 @@
             })(window, document, "clarity", "script", "7e9t7td3ig");
         }
 
-        util.div('window_caption_title').innerHTML = buildinfo.version;
+        // util.div('window_caption_title').innerHTML = buildinfo.version;
 
         var manager = new Manager(package, buildinfo);
 

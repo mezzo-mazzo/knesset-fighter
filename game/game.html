@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html>
 <head>
 <meta http-equiv='content-type' content='text/html; charset=UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'>
@@ -8,41 +9,124 @@
 </head>
 
 <body>
-<div class='LFroot'>
+<!--
+	The UI is plain HTML. Every screen below lives in the document at all times;
+	`LFroot` carries a single `state-<screen>` class and the stylesheet decides
+	what is visible. See application.css (structure) and UI/UI.css (artwork).
+	`mobile`/`desktop` on LFroot gates device specific UI.
+-->
+<div class='LFroot state-loading'>
 	<div class='container'>
-		<div class='window_caption'>
-			<div class='window_caption_title'>
-				F.LF
-			</div>
-			<div class='window_caption_button_bar'>
-				<div class='maximize_button'><span class='unisym'>&#9723;</span></div>
-				<!--<div class='settingsButton'><span class='unisym'>&#9000;</span></div>-->
-				<div class='ProjectFbutton'>
-					<a href='http://project-f.github.io' target='_blank'>
-						<span style='font-family: Palatino Linotype, serif; font-size:16px;'>Project <i>F</i><!--&#8497;--></span>
-					</a>
-				</div>
-			</div>
-		</div>
 		<div class='window'>
-			<div class='frontpage'>
-				<div class='frontpage_text' style='right:0;bottom:0;text-align:right;'>
+			<div class='screen frontpage'>
+				<div class='frontpage_text frontpage_credit_original'>
 					Original work<br>
 					by Marti Wong, Starsky Wong<br>
 					<span class='number'>1999-2005, </span>all rights reserved<br>
-					<a href='http://www.littlefighter.com' target='_blank' style='letter-spacing:-0.2px;'>http://www.LittleFighter.com</a>
+					<a href='http://www.littlefighter.com' target='_blank'>http://www.LittleFighter.com</a>
 				</div>
-				<div class='frontpage_text' style='left:0;bottom:0;'>
-					Open Source Implementation<br>
-					by Project F, <span class='number'>2011-2014</span><br>
-					<a href='http://project-f.github.io' target='_blank' style='letter-spacing:-0.2px;'>http://project-f.github.io</a>
+				<div class='frontpage_text frontpage_credit_projectf'>
+					Forked from<br>
+					Project F, <span class='number'>2011-2014</span><br>
+					<a href='http://project-f.github.io' target='_blank'>http://project-f.github.io</a>
 				</div>
-				<div class='frontpage_content'>
-				</div>
+                <div class="banner"></div>
+				<ul class='menu panel_menu frontpage_menu'>
+					<li class='menu_item' data-action='arcade'>
+						<div class='label'>Arcade Mode</div>
+						<div class='label_local'>משחק מהיר</div>
+					</li>
+					<li class='menu_item multiplayer_only' data-action='local_pvp'>
+						<div class='label'>Local PvP</div>
+						<div class='label_local'>דו-קרב מקומי</div>
+					</li>
+					<li class='menu_item' data-action='network_game'>
+						<div class='label'>Network Game</div>
+						<div class='label_local'>משחק ברשת</div>
+					</li>
+					<li class='menu_item desktop_only' data-action='settings'>
+						<div class='label'>Control Settings</div>
+						<div class='label_local'>הגדרות שלטים</div>
+					</li>
+				</ul>
 			</div>
-			<div class='settings'>
+
+			<div class='screen settings'>
+				<table class='keychanger'>
+					<tbody>
+						<tr class='keychanger_row row_name'>
+							<th>name</th>
+							<td class='player_col player_col_0 cell_name' data-player='0'></td>
+							<td class='player_col player_col_1 cell_name' data-player='1'></td>
+							<td class='player_col player_col_2 cell_name' data-player='2'></td>
+							<td class='player_col player_col_3 cell_name' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_type'>
+							<th>type</th>
+							<td class='player_col player_col_0 cell_type' data-player='0'></td>
+							<td class='player_col player_col_1 cell_type' data-player='1'></td>
+							<td class='player_col player_col_2 cell_type' data-player='2'></td>
+							<td class='player_col player_col_3 cell_type' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='up'>
+							<th>up</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='down'>
+							<th>down</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='left'>
+							<th>left</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='right'>
+							<th>right</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='def'>
+							<th>def</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='jump'>
+							<th>jump</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+						<tr class='keychanger_row row_key' data-key='att'>
+							<th>att</th>
+							<td class='player_col player_col_0 cell_key' data-player='0'></td>
+							<td class='player_col player_col_1 cell_key' data-player='1'></td>
+							<td class='player_col player_col_2 cell_key' data-player='2'></td>
+							<td class='player_col player_col_3 cell_key' data-player='3'></td>
+						</tr>
+					</tbody>
+				</table>
+				<ul class='menu settings_menu'>
+					<li class='menu_item' data-action='ok'>
+						<span class='label'>ok</span><span class='label_local'>（確定）</span>
+					</li>
+				</ul>
 			</div>
-			<div class='network_game'>
+
+			<div class='screen network_game'>
 				<div class='network_game_menu'>
 					<select class='server_select'>
 					</select>
@@ -52,41 +136,326 @@
 					<textarea class='network_log' readonly></textarea>
 				</div>
 			</div>
-			<div class='gameplay'>
+
+			<div class='screen arcade_menu'>
+				<div class='select_title'>
+					<span class='title_arcade'>
+						<span class='label'>Arcade Mode</span>
+						<span class='label_local'>משחק מהיר</span>
+					</span>
+				</div>
+				<ul class='menu panel_menu arcade_mode_menu'>
+					<li class='menu_item one-liner' data-action='1v1'>
+						<div class='label'>1v1</div>
+<!--						<div class='label_local'>אחד על אחד</div>-->
+					</li>
+					<li class='menu_item' data-action='ffa'>
+						<div class='label'>Free for all</div>
+						<div class='label_local'>כולם נגד כולם</div>
+					</li>
+					<li class='menu_item' data-action='1vx'>
+						<div class='label'>1vX</div>
+						<div class='label_local'>אחד נגד כולם</div>
+					</li>
+					<li class='menu_item' data-action='exit'>
+						<div class='label'>Exit</div>
+						<div class='label_local'>יציאה</div>
+					</li>
+				</ul>
+			</div>
+
+			<div class='screen difficulty'>
+				<div class='select_title'>
+					<span class='title_difficulty'>
+						<span class='label'>Difficulty</span>
+						<span class='label_local'>דרגת קושי</span>
+					</span>
+				</div>
+				<ul class='menu panel_menu difficulty_menu'>
+					<li class='menu_item' data-action='easy'>
+						<div class='label'>Easy</div>
+						<div class='label_local'>קל</div>
+					</li>
+					<li class='menu_item' data-action='normal'>
+						<div class='label'>Normal</div>
+						<div class='label_local'>רגיל</div>
+					</li>
+					<li class='menu_item' data-action='difficult'>
+						<div class='label'>Difficult</div>
+						<div class='label_local'>קשה</div>
+					</li>
+					<li class='menu_item' data-action='back'>
+						<div class='label'>Back</div>
+						<div class='label_local'>חזרה</div>
+					</li>
+				</ul>
+			</div>
+
+			<div class='screen bot_count'>
+				<div class='select_title'>
+					<span class='title_bots'>
+						<span class='label'>Arcade Mode</span>
+						<span class='label_local'>מצב ארקייד</span>
+					</span>
+				</div>
+				<div class='count_picker'>
+					<div class='prompt'>
+						<div class='label'>How many opponents?</div>
+						<div class='label_local'>כמה יריבים?</div>
+					</div>
+					<div class='numbers'>
+						<span class='number' data-count='1'>1</span>
+						<span class='number' data-count='2'>2</span>
+						<span class='number' data-count='3'>3</span>
+						<span class='number' data-count='4'>4</span>
+						<span class='number' data-count='5'>5</span>
+						<span class='number' data-count='6'>6</span>
+						<span class='number' data-count='7'>7</span>
+					</div>
+					<div class='menu_item back_item' data-action='back'>
+						<div class='label'>Back</div>
+						<div class='label_local'>חזרה</div>
+					</div>
+				</div>
+			</div>
+
+			<div class='screen character_selection'>
+				<div class='select_title'>
+					<span class='title_own'>
+						<span class='label'>Choose your fighter</span>
+						<span class='label_local'>בחר את הדמות שלך</span>
+					</span>
+					<span class='title_opponent'>
+						<span class='label'>Choose your opponent</span>
+						<span class='label_local'>בחר את היריב</span>
+					</span>
+					<span class='title_opponents'>
+						<span class='label'>Choose opponent <span class='count'></span></span>
+						<span class='label_local'>בחר יריב</span>
+					</span>
+					<span class='title_pvp'>
+						<span class='label'>Both players choose</span>
+						<span class='label_local'>שני השחקנים בוחרים</span>
+					</span>
+				</div>
+				<div class='select_stage'>
+					<div class='preview preview_left'>
+						<div class='preview_role'>
+							<span class='label'>Player 1</span>
+							<span class='label_local'>שחקן 1</span>
+						</div>
+						<div class='preview_portrait'><span class='mark'>?</span></div>
+						<div class='preview_name'></div>
+					</div>
+					<div class='grid character_grid'>
+						<template class='cell_template'>
+							<div class='cell'>
+								<div class='cell_portrait'><span class='mark'>?</span></div>
+								<span class='cell_label'></span>
+							</div>
+						</template>
+					</div>
+					<div class='preview preview_right'>
+						<div class='preview_role'>
+							<span class='role_opponent'>
+								<span class='label'>Opponent</span>
+								<span class='label_local'>יריב</span>
+							</span>
+							<span class='role_player2'>
+								<span class='label'>Player 2</span>
+								<span class='label_local'>שחקן 2</span>
+							</span>
+							<span class='role_opponents'>
+								<span class='label'>Opponents</span>
+								<span class='label_local'>יריבים</span>
+							</span>
+						</div>
+						<div class='preview_portrait'><span class='mark'>?</span></div>
+						<div class='preview_name'></div>
+						<ul class='roster'>
+							<template class='roster_template'>
+								<li class='roster_entry'>
+									<div class='roster_portrait'><span class='mark'>?</span></div>
+									<span class='roster_name'></span>
+								</li>
+							</template>
+						</ul>
+					</div>
+				</div>
+				<div class='select_hint'>
+					<span class='label'>Attack: choose&nbsp;&nbsp;&nbsp;Jump: back</span>
+					<span class='label_local'>תקיפה: בחירה&nbsp;&nbsp;&nbsp;קפיצה: חזרה</span>
+				</div>
+			</div>
+
+			<div class='screen arena_selection'>
+				<div class='select_title'>
+					<span class='title_arena'>
+						<span class='label'>Choose the arena</span>
+						<span class='label_local'>בחר זירה</span>
+					</span>
+				</div>
+				<div class='select_stage'>
+					<div class='grid arena_grid'>
+						<template class='cell_template'>
+							<div class='cell'>
+								<div class='cell_portrait'><span class='mark'>?</span></div>
+								<span class='cell_label'></span>
+							</div>
+						</template>
+					</div>
+				</div>
+				<div class='select_hint'>
+					<span class='label'>Attack: start the fight&nbsp;&nbsp;&nbsp;Jump: back</span>
+					<span class='label_local'>תקיפה: התחל קרב&nbsp;&nbsp;&nbsp;קפיצה: חזרה</span>
+				</div>
+			</div>
+
+			<div class='screen gameplay'>
 				<canvas class='canvas' width='0' height='0'></canvas>
-				<div class='top_status'></div>
+				<div class='top_status'>
+					<span class='demo_notice' hidden>
+						F.LF is running in Demo mode, press `Esc` or click
+						<button class='here_button'>here</button> to start game.
+					</span>
+				</div>
 				<div class='bottom_status'>
-					<input class='fps' value='0fps'></input>
+					<input class='fps' value='0fps'>
 					<span class='footnote'></span>
 				</div>
 				<div class='dialog_holder'>
-					<div class='pause_message'></div>
-					<div class='summary_dialog'></div>
+					<div class='message_overlay' hidden>
+						<span class='message_pause'>PAUSE</span>
+						<span class='message_demo'>DEMO</span>
+						<span class='message_loading'>LOADING</span>
+					</div>
+					<div class='summary_dialog' hidden>
+						<div class='summary_head'>
+							<div class='summary_title'>Summary<span class='label_local'>（總結）</span></div>
+							<div class='summary_columns'>
+								<div class='col_icon'></div>
+								<div class='col_name'>Player<span class='label_local'>（玩家）</span></div>
+								<div class='col_kill'>Kill<span class='label_local'>（殺敵）</span></div>
+								<div class='col_attack'>Attack<span class='label_local'>（攻擊）</span></div>
+								<div class='col_hp_lost'>HP Lost<span class='label_local'>（生命損耗）</span></div>
+								<div class='col_mp_usage'>MP Usage<span class='label_local'>（氣用量）</span></div>
+								<div class='col_picking'>Picking<span class='label_local'>（拾起物件）</span></div>
+								<div class='col_status'>Status<span class='label_local'>（狀態）</span></div>
+							</div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_row' hidden>
+							<div class='col_icon'><div class='icon'></div></div>
+							<div class='textbox col_name'></div>
+							<div class='textbox col_kill'></div>
+							<div class='textbox col_attack'></div>
+							<div class='textbox col_hp_lost'></div>
+							<div class='textbox col_mp_usage'></div>
+							<div class='textbox col_picking'></div>
+							<div class='textbox col_status'></div>
+						</div>
+						<div class='summary_foot'>
+							<span class='summary_hint'>Press 'Attack' or 'Jump' to continue<span class='label_local'>（按 '攻擊' 或 '跳躍' 繼續）</span></span>
+							<span class='summary_time_label'>time<span class='label_local'>（完結時間）</span>：</span>
+							<span class='textbox summary_time'></span>
+						</div>
+					</div>
 				</div>
 			</div>
-			<div class='character_selection'>
-			</div>
+
 		</div>
 		<pre class='projectFmessage'>
-                 ______        
-                / ____/        
-             __/_/___          
-           / _/_____/          
-           \ / /               
-            `-/                
-                               
-           Project F           
+                 ______
+                / ____/
+             __/_/___
+           / _/_____/
+           \ / /
+            `-/
+
+           Project F
 		</pre>
 	</div>
-	<div class='extra_UI container'>
+
+	<div class='extra_UI'>
 		<div class='dialog_holder'>
-			<div class='alert_box' style='display:none;'>
+			<div class='alert_box' hidden>
 				<span class='alert_message'>Loading...</span>
 				<button class='alert_box_ok'>OK</button>
 			</div>
 		</div>
 	</div>
+
 	<div class='touch_control_holder'></div>
+
 	<div class='lobby'>
 		<div class='header'>
 			<div class='nav'>
@@ -100,7 +469,8 @@
 
 </div>
 <pre id='flf-config' style='display:none'>
-{"root":"../","package":"../LF2_19"}
+{"root":"../","package":"../characters"}
 </pre>
 <script data-main="game.js" src="../third_party/require.js"></script>
 </body>
+</html>

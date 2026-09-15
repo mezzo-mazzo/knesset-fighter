@@ -740,10 +740,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
     match.prototype.overlay_message = function (mess) {
       const $ = this
       if ($.manager.overlay_mess) {
-        $.manager.overlay_mess.show()
-        const item = $.data.UI.data.message_overlay[mess]
-        $.manager.overlay_mess.set_img_x_y(-item[0], -item[1])
-        $.manager.overlay_mess.set_w_h(item[2], item[3])
+        $.manager.overlay_mess.set(mess) // 'pause', 'demo' or 'loading'
       }
     }
 

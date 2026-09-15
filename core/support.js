@@ -91,8 +91,13 @@ define(function () {
     support.browser = M[0]
     support.browser_name = M[0]
     support.browser_version = M[1]
-    const mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile/i.exec(navigator.userAgent.toLowerCase())
+    const mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile|Silk|Mobile/i.exec(navigator.userAgent.toLowerCase())
     support.mobile = mobile ? mobile[0] : undefined
+    if (!support.mobile &&
+      /Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) {
+      // iPadOS 13 and later pretend to be a desktop Mac
+      support.mobile = 'ipad'
+    }
     // [--adapted from http://davidwalsh.name/vendor-prefix
     const styles = window.getComputedStyle(document.documentElement, '')
     const pre = (Array.prototype.slice

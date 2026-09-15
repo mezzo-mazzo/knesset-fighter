@@ -1,3 +1,40 @@
+/*\
+ * application.css
+ *
+ * structure of the F.LF user interface.
+ *
+ * the UI is plain HTML (see game/game.html). the active screen is selected by a
+ * single `state-<screen>` class on `.LFroot`, so navigation is pure CSS:
+ *
+ *   .LFroot.state-frontpage           -> frontpage is visible
+ *   .LFroot.state-character_selection -> character selection is visible
+ *   ...
+ *
+ * the screens are, in the order the player walks through them:
+ *   frontpage -> arcade_menu -> difficulty -> bot_count -> character_selection
+ *             -> arena_selection -> gameplay
+ *   frontpage -> settings | network_game -> lobby
+ *
+ * other classes on `.LFroot`:
+ *   .mobile / .desktop  device class (userAgent), gates device specific UI
+ *   .multiplayer_ready  a second controller is set up, local PvP is possible
+ *   .wide               gameplay is running on a wide screen (>15/9)
+ *   .network_session    a network game is set up: the control settings show the
+ *                       two remote controllers as well
+ *
+ * artwork, colours and art-dependent geometry live in the content package
+ * stylesheet (characters/UI/UI.css).
+\*/
+
+[hidden]
+{
+	display:none !important;
+}
+html, body
+{
+	margin:0;
+	padding:0;
+}
 .LFroot
 {
 	-webkit-user-select: none;
@@ -11,86 +48,36 @@
 	width:100%; height:100%;
 	font-family:Arial,sans;
 	font-size:18px;
+	background:#676767;
 }
+
+/* [--- the game window: always scaled to fit the screen (see manager.resizer) */
 .container
 {
 	position:absolute;
 	left:0px; top:0px;
-}
-.extra_UI
-{
-	position:absolute;
-	left:0; top:0;
-	width:804px; height:590px;
-	pointer-events:none;
-}
-.extra_UI.maximized
-{
-	width:100%; height:100%;
-}
-.maximized .frontpage_content
-{
-	position:absolute;
-	left:0; top:60px;
-	right:0; bottom:0;
-	margin:auto;
-	width:794px;
-	height:550px;
-}
-.frontpage_text
-{
-	position:absolute;
-	font-family:Helvetica,sans-serif;
-	font-weight:bold;
-	font-size:13.3px;
-	letter-spacing:0.25px;
-	line-height:20px;
-	color:#5077d0;
-	text-align:left;
-	padding:0 8px 5px 8px;
-	z-index:10;
-}
-.frontpage_text a
-{
-	text-decoration:none;
-	color:#5077d0;
-}
-.frontpage_text .number
-{
-	letter-spacing:0.5px;
+	-webkit-transform-origin: 0 0;
+	transform-origin: 0 0;
 }
 .window
 {
 	position:relative;
-	border:5px solid #676767;
-	width:794px;
-	height:550px;
+	width:1588px; /* 2x port: 794 -> 1588 */
+	height:1100px; /* 2x port: 550 -> 1100 */
 }
-.window > div, .canvas
+.LFroot.wide .window
 {
-	position:absolute;
-	left:0; top:0;
-	right:0; bottom:0;
+	height:972px; /* 2x port: 550-128(unscaled UI panel) -> 1100-128 */
 }
 .bgviewer .window
 {
-	height:400px;
-}
-.wideWindow .window
-{
-	height:422px;
-}
-.maximized .window
-{
-	border: none;
+	height:800px; /* 2x port: 400 -> 800 (GA.viewer.height) */
 }
 .window_caption
 {
 	position:relative;
 	top:0px;
-	width:794px; height:30px;
-	border:5px solid #676767;
-	border-width:0 5px;
+	width:1588px; height:30px; /* 2x port: width 794 -> 1588 */
 	background:#676767;
 	z-index:10;
 }
@@ -109,11 +96,6 @@
 	position:absolute;
 	top:0px; right:0px;
 	height:100%;
-	-webkit-user-select: none;
-	-khtml-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
 }
 .window_caption_button_bar > *
 {
@@ -133,11 +115,6 @@
 {
 	background:#248ce5;
 }
-.unisym
-{
-	font-family: Arial Unicode MS, FreeSerif, serif;
-	font-size: 18px;
-}
 .ProjectFbutton
 {
 	background:#7c547c;
@@ -151,147 +128,77 @@
 {
 	background:#9d6e9d;
 }
-.gameplay
+.ProjectFbutton_label
 {
+	font-family: Palatino Linotype, serif;
+	font-size:16px;
 }
-.panel
-{
-	position:absolute;
-	left:0; top:0;
-	width:100%; height:128px;
-	z-index:2;
-}
-.background
-{
-	position:absolute;
-	left:0; top:0;
-	width:100%; height:550px;
-	z-index:-1;
-	overflow:hidden;
-}
-.maximized .background
-{
-	overflow:visible;
-}
-.bgviewer .background
-{
-	top:-128px;
-}
-.top_status
-{
-	position:absolute;
-	background:#000;
-	left:0; top:106px;
-	width:100%; height:22px;
-	line-height:22px;
-	font-family:"MS PMincho",monospace;
-	font-size:14px;
-	font-weight:bold;
-	color:#FFF;
-}
-.top_status button
-{
-	padding:0 10px;
-}
-.wideWindow .top_status
-{
-	opacity: 0.5;
-}
-.bottom_status
-{
-	position:absolute;
-	bottom:0px;
-	width:100%; height:22px;
-	line-height:22px;
-	background:#000;
-	text-align:right;
-}
-.fps
-{
-	float:left;
-	border:none;
-	background:none;
-	width:50px;
-	color:#FFF;
-	padding:0 5px 0 5px;
-}
-.footnote
-{
-	font-family:"MS PMincho",monospace;
-	font-size:12px;
-	text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;
-	letter-spacing:2px;
-	color:#FFF;
-}
-.backgroundScroll
-{
-	position:absolute;
-	width:100%;
-	top:550px;
-	overflow-x:scroll;
-	overflow-y:hidden;
-}
-.maximized .backgroundScroll
+.projectFmessage
 {
 	display:none;
 }
-.wideWindow .backgroundScroll
-{
-	top:422px;
-}
-.backgroundScrollChild
-{
-	position:absolute;
-	left:0; top:0;
-	height:1px;
-}
-.bgviewer .backgroundScroll
-{
-	top:400px;
-	z-index:10;
-}
-.window .dialog_holder
-{
-	position:absolute;
-	left:0; top:0;
-	width:100%; height:100%;
-}
-.dialog_holder
-{
-	pointer-events:none;
-}
-.dialog_holder > div
+/* ---] */
+
+/* [--- screens: only the one named by the state class on .LFroot is shown */
+.screen
 {
 	position:absolute;
 	left:0; top:0;
 	right:0; bottom:0;
-	margin:auto;
-	pointer-events:auto;
+	display:none;
 }
-.alert_box
+.LFroot.state-frontpage .frontpage,
+.LFroot.state-settings .settings,
+.LFroot.state-network_game .network_game,
+.LFroot.state-arcade_menu .arcade_menu,
+.LFroot.state-difficulty .difficulty,
+.LFroot.state-bot_count .bot_count,
+.LFroot.state-character_selection .character_selection,
+.LFroot.state-arena_selection .arena_selection,
+.LFroot.state-gameplay .gameplay
 {
-	height: 100px;
-	width: 300px;
-	padding: 20px;
-	text-align: center;
-	background: rgba(50,50,50,0.8);
-	color: #FFF;
-	box-shadow: 0 0 20px rgb(50,50,50);
+	display:block;
 }
-.alert_box > button
+.lobby
 {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-    font-weight: bold;
-    padding: 4px 12px;
-    background: rgba(255,255,255,1);
-    border-radius: 5px;
+	position:absolute;
+	left:0; top:0; right:0; bottom:0;
+	display:none;
+	flex-flow: column nowrap;
+	justify-content: center;
+	align-content: center;
+	align-items: center;
+	z-index:10;
+}
+.LFroot.state-lobby .lobby
+{
+	display:flex;
+}
+/* ---] */
+
+/* [--- device specific UI */
+.LFroot.mobile .desktop_only
+{
+	display:none;
+}
+.LFroot.desktop .mobile_only
+{
+	display:none;
+}
+/* local PvP needs a second controller, set up in the control settings */
+.LFroot:not(.multiplayer_ready) .multiplayer_only
+{
+	display:none;
 }
 .touch_control_holder
 {
 	position:absolute;
 	left:0px; top:0px;
+	display:none;
+}
+.LFroot.mobile .touch_control_holder
+{
+	display:block;
 }
 .touch_controller_button
 {
@@ -301,7 +208,7 @@
 	color:#FFF;
 	font-size:20px;
 	opacity:0.5;
-    transition:left 0.5s;
+	transition:left 0.5s;
 }
 .touch_controller_button > span
 {
@@ -309,17 +216,25 @@
 	vertical-align:middle;
 	text-align:center;
 }
-.projectFmessage
+/* ---] */
+
+/* [--- menus. the items are plain HTML, the package stylesheet gives them their
+        looks: `.active` is set by the keyboard driven dialogs, `:hover` by the
+        mouse. a `data-action` attribute names what an item does. */
+.menu
 {
-	display:none;
+	position:absolute;
+	list-style:none;
+	margin:0;
+	padding:0;
 }
-.character_selection
+.menu_item
 {
+	cursor:pointer;
 }
-.settings
-{
-	font-size:16px;
-}
+/* ---] */
+
+/* [--- text. a `.textbox` holds a value filled in by the game */
 .textbox, .settings
 {
 	font-family:Helvetica,sans-serif;
@@ -328,89 +243,128 @@
 }
 .textbox
 {
+	overflow:hidden;
 	text-align:center;
 	font-size:13px;
 }
+.settings
+{
+	font-size:16px;
+}
+/* ---] */
+
+/* [--- frontpage */
+.frontpage_text
+{
+	position:absolute;
+	font-family:Helvetica,sans-serif;
+	font-weight:bold;
+	font-size:13.3px;
+	letter-spacing:0.25px;
+	line-height:20px;
+	color:#5077d0;
+	text-align:left;
+	padding:0 8px 5px 8px;
+	z-index:10;
+}
+.frontpage_text a
+{
+	text-decoration:none;
+	color:#5077d0;
+	letter-spacing:-0.2px;
+}
+.frontpage_text .number
+{
+	letter-spacing:0.5px;
+}
+.frontpage_credit_original
+{
+	right:0; bottom:0;
+	text-align:right;
+}
+.frontpage_credit_projectf
+{
+	left:0; bottom:0;
+}
+/* ---] */
+
+/* [--- control settings */
 .keychanger
 {
 	position:absolute;
-	left:70px; top:160px;
+	left:140px; top:340px; /* 2x port: 70,160 -> 140,320, plus the leading line break of the old markup */
 	text-align:center;
+	display:inline-table;
+}
+.keychanger th
+{
+	text-align:right;
+	width:160px; /* 2x port: 80px -> 160px */
+	padding:0 20px;
+	font-weight:bold;
 }
 .keychanger td
 {
 	background: #000;
-	width: 120px;
+	width: 240px; /* 2x port: 120 -> 240 */
+	cursor:pointer;
+}
+/* the two remote controllers only exist during a network game */
+.LFroot:not(.network_session) .keychanger .player_col_2,
+.LFroot:not(.network_session) .keychanger .player_col_3
+{
+	display:none;
+}
+.keychanger td.changing
+{
+	color:#000;
+	background:#FFF;
 }
 .settings .note
 {
 	color:#5a77d8;
 }
+/* ---] */
+
+/* [--- network game */
 .network_game_menu
 {
 	position:absolute;
-	left:180px; top:230px;
+	left:360px; top:460px; /* 2x port: 180,230 -> 360,460 */
 }
 .server_select, .network_game button, .network_game input
 {
 	background:#1e337a;
 	font-family:Helvetica,sans-serif;
 	font-weight:bold;
-	font-size:14px;
+	font-size:26px; /* 2x port: 14 -> 26 */
 	color:#FFF;
 	border:1px solid #FFF;
 	padding:10px 20px;
 }
 .server_select
 {
-	width:250px;
+	width:500px; /* 2x port: 250 -> 500 */
 }
 .network_game button
 {
-	width:95px;
+	width:190px; /* 2x port: 95 -> 190 */
 }
 .server_address
 {
-	width:410px;
+	width:820px; /* 2x port: 410 -> 820 */
 }
 .network_log
 {
-	width:445px;
-	height:200px;
+	width:890px; /* 2x port: 445 -> 890 */
+	height:400px; /* 2x port: 200 -> 400 */
 	text-align:left;
 	background:none;
 	border:none;
 	color:#FFF;
 	font-family:monospace;
-	font-size:14px;
+	font-size:24px; /* 2x port: 12 -> 24 */
 	resize:none;
-}
-.enable_sound
-{
-	position:absolute;
-	left:120px; top:400px;
-	width:280px;
-	z-index:2;
-}
-.character_selection_textbox
-{
-    transition:color 0.1s;
-}
-.menu_dialog_textbox
-{
-	text-align:left;
-	padding-left:5px;
-}
-.lobby
-{
-	position:absolute;
-    left:0; top:0; right:0; bottom:0;
-	display: flex;
-	flex-flow: column nowrap;
-	justify-content: center;
-	align-content: center;
-	align-items: center;
-	z-index:10;
 }
 .lobby > *
 {
@@ -445,3 +399,157 @@
 {
 	background:#449;
 }
+/* ---] */
+
+/* [--- gameplay */
+.gameplay > .canvas
+{
+	position:absolute;
+	left:0; top:0;
+}
+.panel
+{
+	position:absolute;
+	left:0; top:0;
+	width:100%; height:128px;
+	z-index:2;
+}
+.background
+{
+	position:absolute;
+	left:0; top:0;
+	width:100%; height:1100px; /* 2x port: 550 -> 1100 */
+	z-index:-1;
+	overflow:visible;
+}
+.bgviewer .background
+{
+	top:-256px; /* 2x port: -128 -> -256, matches game/background.js */
+}
+.top_status
+{
+	position:absolute;
+	background:#000;
+	left:0; top:106px;
+	width:100%; height:22px;
+	line-height:22px;
+	font-family:"MS PMincho",monospace;
+	font-size:14px;
+	font-weight:bold;
+	color:#FFF;
+}
+.LFroot.demo .top_status
+{	/* the demo notice must stay above the UI panel */
+	z-index:1000;
+}
+.top_status button
+{
+	padding:0 10px;
+}
+.here_button
+{
+	width:100px;
+	letter-spacing:3px;
+}
+.LFroot.wide .top_status
+{
+	opacity: 0.5;
+}
+.bottom_status
+{
+	position:absolute;
+	bottom:0px;
+	width:100%; height:22px;
+	line-height:22px;
+	background:#000;
+	text-align:right;
+}
+.fps
+{
+	float:left;
+	border:none;
+	background:none;
+	width:50px;
+	color:#FFF;
+	padding:0 5px 0 5px;
+}
+.footnote
+{
+	font-family:"MS PMincho",monospace;
+	font-size:12px;
+	text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;
+	letter-spacing:2px;
+	color:#FFF;
+}
+.backgroundScroll
+{
+	position:absolute;
+	width:100%;
+	top:1100px; /* 2x port: 550 -> 1100 */
+	overflow-x:scroll;
+	overflow-y:hidden;
+}
+.LFroot.wide .backgroundScroll
+{
+	top:972px; /* 2x port: matches .LFroot.wide .window height */
+}
+.backgroundScrollChild
+{
+	position:absolute;
+	left:0; top:0;
+	height:1px;
+}
+.bgviewer .backgroundScroll
+{
+	top:800px; /* 2x port: 400 -> 800 (GA.viewer.height) */
+	z-index:10;
+}
+/* ---] */
+
+/* [--- dialogs: centered over their holder */
+.window .dialog_holder
+{
+	position:absolute;
+	left:0; top:0;
+	width:100%; height:100%;
+}
+.extra_UI
+{
+	position:absolute;
+	left:0; top:0;
+	width:100%; height:100%;
+	pointer-events:none;
+}
+.dialog_holder
+{
+	pointer-events:none;
+}
+.dialog_holder > div
+{
+	position:absolute;
+	left:50%; top:50%;
+	-webkit-transform: translate(-50%,-50%);
+	transform: translate(-50%,-50%);
+	pointer-events:auto;
+}
+.alert_box
+{
+	height: 100px;
+	width: 300px;
+	padding: 20px;
+	text-align: center;
+	background: rgba(50,50,50,0.8);
+	color: #FFF;
+	box-shadow: 0 0 20px rgb(50,50,50);
+}
+.alert_box > button
+{
+	position: absolute;
+	right: 20px;
+	bottom: 20px;
+	font-weight: bold;
+	padding: 4px 12px;
+	background: rgba(255,255,255,1);
+	border-radius: 5px;
+}
+/* ---] */
