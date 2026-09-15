@@ -330,10 +330,10 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
           if ($.ps.vx || $.ps.vy || $.ps.vz) {  // gaining velocity; flying away
             let imx, imy // impulse
             if ($.light) {
-              imx = 58; imy = -15
+              imx = 116; imy = -30 // 2x port: 58,-15 -> 116,-30
             }
             if ($.heavy) {
-              imx = 48; imy = -40
+              imx = 96; imy = -80 // 2x port: 48,-40 -> 96,-80
             }
             $.mech.set_pos(
               att.ps.x + att.dirh() * imx,

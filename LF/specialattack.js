@@ -45,7 +45,7 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
             break
 
           case 'leaving':
-            if ($.bg.leaving($, 200)) { // only when leaving far
+            if ($.bg.leaving($, 400)) { // only when leaving far; 2x port: 200 -> 400
               $.trans.frame(1000) // destroy
             }
             break
@@ -142,7 +142,7 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
             if (ITR.effect !== 3 && ITR.effect !== 2 && att.type === 'specialattack' && att.frame.D.itr.effect === 3) { // non freeze or fire ball hit another freeze ball
               $.ps.vx = 0
               $.trans.frame(1000)
-              $.match.create_object({ kind: 1, x: 41, y: 50, action: 0, dvx: 0, dvy: 0, oid: 209, facing: 0 }, att)
+              $.match.create_object({ kind: 1, x: 82, y: 100, action: 0, dvx: 0, dvy: 0, oid: 209, facing: 0 }, att) // 2x port: x 41->82, y 50->100
               return true
             }
             $.ps.vx = 0
@@ -168,7 +168,7 @@ define(['LF/livingobject', 'LF/global', 'core/util'],
               if ($.frame.D.itr.effect !== 3 && $.frame.D.itr.effect !== 2 && ITR.effect === 3) { // non freeze or fire ball hit by freeze ball
                 $.ps.vx = 0
                 $.trans.frame(1000)
-                $.match.create_object({ kind: 1, x: 41, y: 50, action: 0, dvx: 0, dvy: 0, oid: 209, facing: 0 }, att)
+                $.match.create_object({ kind: 1, x: 82, y: 100, action: 0, dvx: 0, dvy: 0, oid: 209, facing: 0 }, att) // 2x port: x 41->82, y 50->100
                 return true
               }
               if (ITR.kind === 0) {

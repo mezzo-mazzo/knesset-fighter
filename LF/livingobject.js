@@ -154,13 +154,13 @@ define(['LF/global', 'LF/sprite', 'LF/mechanics', 'LF/AI', 'LF/util', 'LF/sprite
 
     livingobject.prototype.whirlwind_force = function (rect) {
       const $ = this
-      // lift
-      $.ps.vy -= 2 / $.mech.mass
+      // lift; 2x port: 2 -> 4
+      $.ps.vy -= 4 / $.mech.mass
       // centripetal force
       const cx = rect.x + rect.vx + rect.w * 0.5 // center
       const cz = rect.z
-      $.ps.vx -= sign($.ps.x - cx) * 2 / $.mech.mass
-      $.ps.vz -= sign($.ps.z - cz) * 0.5 / $.mech.mass
+      $.ps.vx -= sign($.ps.x - cx) * 4 / $.mech.mass // 2x port: 2 -> 4
+      $.ps.vz -= sign($.ps.z - cz) * 1 / $.mech.mass // 2x port: 0.5 -> 1
 
       function sign(x) {
         return x > 0 ? 1 : -1
@@ -169,18 +169,18 @@ define(['LF/global', 'LF/sprite', 'LF/mechanics', 'LF/AI', 'LF/util', 'LF/sprite
 
     livingobject.prototype.flute_force = function () {
       const $ = this
-      let low_level = -140
-      let mid_level = -160
-      let high_level = -180
+      let low_level = -280 // 2x port: -140 -> -280
+      let mid_level = -320 // 2x port: -160 -> -320
+      let high_level = -360 // 2x port: -180 -> -360
       $.effect.super = true
       $.ps.vx = 0
       $.ps.vz = 0
       if ($.ps.y > low_level) {
-        $.ps.vy = ($.ps.vy <= 0) ? (-7.5) : (-$.ps.vy / 2)
+        $.ps.vy = ($.ps.vy <= 0) ? (-15) : (-$.ps.vy / 2) // 2x port: -7.5 -> -15
       } else if ($.ps.y <= low_level && $.ps.y > mid_level) {
-        $.ps.vy -= ($.ps.vy <= 0) ? ($.mech.mass / 2) : ($.mech.mass / 2)
+        $.ps.vy -= ($.ps.vy <= 0) ? ($.mech.mass) : ($.mech.mass) // 2x port: mass/2 -> mass
       } else if ($.ps.y <= mid_level && $.ps.y > high_level) {
-        $.ps.vy += ($.ps.vy <= 0) ? ($.mech.mass / 2) : ($.mech.mass / 2)
+        $.ps.vy += ($.ps.vy <= 0) ? ($.mech.mass) : ($.mech.mass) // 2x port: mass/2 -> mass
       }
       // Floating effect
       switch ($.type) {

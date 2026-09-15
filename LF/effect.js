@@ -184,11 +184,11 @@ define(['LF/global', 'LF/sprite', 'core/effects-pool', 'core/util'],
         } else {
           $.mass = 1
         }
-        if (!R) { R = { w: 50, h: 50 } }
+        if (!R) { R = { w: 100, h: 100 } } // 2x port: 50 -> 100
         P.x += $.match.random() * R.w * 1.2 - $.width
         P.y -= $.match.random() * R.h
         $.ps.vx = ($.match.random() - 0.5) * R.w * 0.5
-        $.ps.vy = $.match.random() * 2 - 4
+        $.ps.vy = $.match.random() * 4 - 8 // 2x port: 2 -> 4, 4 -> 8
       }
       $.frame = sf
       $.frameD = $.dat.frame[$.frame]

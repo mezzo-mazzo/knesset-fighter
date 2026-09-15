@@ -11,13 +11,13 @@ define(['LF/util'], function (util) {
   G.application = {}
   const GA = G.application
   GA.window = {}
-  GA.window.width = 794
-  GA.window.outer_width = 804
-  GA.window.wide_width = 1000
-  GA.window.height = 550
-  GA.window.outer_height = 590
+  GA.window.width = 1588 // 2x port: 794 -> 1588
+  GA.window.outer_width = 1608 // 2x port: 804 -> 1608
+  GA.window.wide_width = 2000 // 2x port: 1000 -> 2000
+  GA.window.height = 1100 // 2x port: 550 -> 1100
+  GA.window.outer_height = 1180 // 2x port: 590 -> 1180
   GA.viewer = {}
-  GA.viewer.height = 400
+  GA.viewer.height = 800 // 2x port: 400 -> 800
   GA.camera = {}
   GA.camera.speed_factor = 1 / 18
 
@@ -108,7 +108,7 @@ define(['LF/util'], function (util) {
   GC.default.health.mp_start = 200 // it cannot be overriden
 
   GC.default.itr = {}
-  GC.default.itr.zwidth = 12 // default itr zwidth
+  GC.default.itr.zwidth = 24 // default itr zwidth; 2x port: 12 -> 24
   GC.default.itr.hit_stop = 3 // default stall when hit somebody
   GC.default.itr.throw_injury = 10
 
@@ -125,7 +125,7 @@ define(['LF/util'], function (util) {
 
   GC.default.fall = {}
   GC.default.fall.value = 20 // default fall
-  GC.default.fall.dvy = -6.9 // default dvy when falling
+  GC.default.fall.dvy = -13.8 // default dvy when falling; 2x port: -6.9 -> -13.8
 
   GC.default.weapon = {}
   GC.default.weapon.vrest = 9 // default weapon vrest
@@ -160,16 +160,16 @@ define(['LF/util'], function (util) {
   GC.character = {}
   GC.character.bounceup = {} // bounce up during fall
   GC.character.bounceup.limit = {}
-  GC.character.bounceup.limit.xy = 13.4 // defined speed threshold to bounce up again
-  GC.character.bounceup.limit.y = 11 // y threshold; will bounce if any one of xy,y is overed
-  GC.character.bounceup.y = 4.25 // defined bounce up speed
+  GC.character.bounceup.limit.xy = 26.8 // defined speed threshold to bounce up again; 2x port: 13.4 -> 26.8
+  GC.character.bounceup.limit.y = 22 // y threshold; will bounce if any one of xy,y is overed; 2x port: 11 -> 22
+  GC.character.bounceup.y = 8.5 // defined bounce up speed; 2x port: 4.25 -> 8.5
   GC.character.bounceup.absorb = // how much dvx to absorb when bounce up
-  {
-    9: 1,
-    14: 4,
-    20: 10,
+  { // 2x port: keys (speed) and values (absorb amount) both doubled
+    18: 2,
+    28: 8,
     40: 20,
-    60: 30
+    80: 40,
+    120: 60
   }
 
   GC.defend = {}
@@ -177,55 +177,55 @@ define(['LF/util'], function (util) {
   GC.defend.injury.factor = 0.1 // defined defend injury factor; meaning only that portion of injury will be done for an effective defence
   GC.defend.break_limit = 40 // defined defend break
   GC.defend.absorb = // how much dvx to absorb when defence is broken
-  { // look up table
-    5: 0,
-    15: 5
+  { // look up table; 2x port: keys (speed) and values (absorb amount) both doubled
+    10: 0,
+    30: 10
   }
 
   GC.fall = {}
   GC.fall.KO = 60 // defined KO
   GC.fall.wait180 = // the wait of 180 depends on effect.dvy
   // meaing the stronger the dvy, the longer it waits
-  { // lookup
+  { // lookup; 2x port: keys (dvy, spatial) doubled, values (wait ticks, time) unchanged
     // dvy:wait
-    7: 1,
-    9: 2,
-    11: 3,
-    13: 4,
-    15: 5,
-    17: 6
+    14: 1,
+    18: 2,
+    22: 3,
+    26: 4,
+    30: 5,
+    34: 6
   }
 
   GC.friction = {}
   GC.friction.fell = // defined friction at the moment of fell onto ground
-  { // a lookup table
+  { // a lookup table; 2x port: keys (speed) and values (friction) both doubled
     // speed:friction
-    2: 0,
-    3: 1,
-    5: 2,
-    6: 4, // smaller or equal to 6, value is 4
-    9: 5,
-    13: 7,
-    25: 9 // guess entry
+    4: 0,
+    6: 2,
+    10: 4, // smaller or equal to 6, value is 4
+    12: 8,
+    18: 10,
+    26: 14,
+    50: 18 // guess entry
   }
 
   // physics
-  GC.min_speed = 1 // defined minimum speed
-  GC.gravity = 1.7 // defined gravity
+  GC.min_speed = 2 // defined minimum speed; 2x port: 1 -> 2
+  GC.gravity = 3.4 // defined gravity; 2x port: 1.7 -> 3.4
 
   GC.weapon = {}
   GC.weapon.bounceup = {} // when a weapon falls onto ground
-  GC.weapon.bounceup.limit = 8 // defined limit to bounce up again
+  GC.weapon.bounceup.limit = 16 // defined limit to bounce up again; 2x port: 8 -> 16
   GC.weapon.bounceup.speed = {}
-  GC.weapon.bounceup.speed.y = -3.7 // defined bounce up speed
-  GC.weapon.bounceup.speed.x = 3
-  GC.weapon.bounceup.speed.z = 1.5
+  GC.weapon.bounceup.speed.y = -7.4 // defined bounce up speed; 2x port: -3.7 -> -7.4
+  GC.weapon.bounceup.speed.x = 6 // 2x port: 3 -> 6
+  GC.weapon.bounceup.speed.z = 3 // 2x port: 1.5 -> 3
   GC.weapon.soft_bounceup = {} // when heavy weapon being hit by character punch
   GC.weapon.soft_bounceup.speed = {}
-  GC.weapon.soft_bounceup.speed.y = -2
+  GC.weapon.soft_bounceup.speed.y = -4 // 2x port: -2 -> -4
 
   GC.weapon.hit = {} // when a weapon hit others
-  GC.weapon.hit.vx = -3 // absolute speed
+  GC.weapon.hit.vx = -6 // absolute speed; 2x port: -3 -> -6
   GC.weapon.hit.vy = 0
 
   GC.weapon.reverse = {} // when a weapon is being hit while travelling in air

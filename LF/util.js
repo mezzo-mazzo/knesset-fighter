@@ -78,7 +78,7 @@ define(function () {
       util.root = document.getElementsByClassName('LFroot')[0]
       util.container = util.root.getElementsByClassName('container')[0]
     }
-    classchain = Array.prototype.slice.call(arguments)
+    const classchain = Array.prototype.slice.call(arguments)
     let cur = util.root
     while (classchain.length) {
       cur = cur.getElementsByClassName(classchain.shift())[0]

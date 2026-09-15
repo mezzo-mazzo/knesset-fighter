@@ -26,8 +26,8 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
     if (!config) {	// create an empty background
       $.id = -1
       $.name = 'empty background'
-      $.width = 1500
-      $.zboundary = [0, 300]
+      $.width = 3000 // 2x port: 1500 -> 3000
+      $.zboundary = [0, 600] // 2x port: [0,300] -> [0,600]
       $.height = $.zboundary[1] - $.zboundary[0]
       $.shadow = { x: 0, y: 0, img: '' }
       return
@@ -107,7 +107,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
       ratio: 1
     })
     $.layers[0].sp.set_w($.width)
-    $.layers[0].sp.set_z(3000)
+    $.layers[0].sp.set_z(6000) // 2x port: 3000 -> 6000; must stay above every layer's -2000+width z below
     $.floor = $.layers[0].sp
     const LAY = Futil.group_elements(data.layer, 'width')
     for (const i in LAY) {
@@ -116,7 +116,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
         sp: new Fsprite({ canvas: config.layers, type: 'group' }),
         ratio: (parseInt(i) - GA.window.width) / ($.width - GA.window.width)
       }
-      lay.sp.set_z(-1000 + parseInt(i))
+      lay.sp.set_z(-2000 + parseInt(i)) // 2x port: -1000 -> -2000, keeps headroom under $.floor's z now that widths are doubled
       $.layers.push(lay)
       for (let j = 0; j < LAY[i].length; j++) {
         const dlay = LAY[i][j] // layer data
@@ -180,7 +180,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
       $.carousel = {
         type: config.standalone.carousel,
         dir: 1,
-        speed: 5
+        speed: 10 // 2x port: 5 -> 10
       }
       $.camera_locked = false
       $.standalone = config.standalone
@@ -190,7 +190,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
     function correct_y(dlay) {
       if (data.name === 'HK Coliseum') {
         if (dlay.pic.indexOf('back1') === -1) {
-          return dlay.y - 8
+          return dlay.y - 16 // 2x port: -8 -> -16
         } else {
           return dlay.y
         }
@@ -267,7 +267,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
     }
     const nx = o.ps.sx + o.ps.vx
     const ny = o.ps.sy + o.ps.vy
-    return (nx + o.sp.width < 0 - xt || nx > $.width + xt || ny < -600 || ny > 100)
+    return (nx + o.sp.width < 0 - xt || nx > $.width + xt || ny < -1200 || ny > 200) // 2x port: -600 -> -1200, 100 -> 200
   }
 
   // get an absolute position using a ratio, e.g. get_pos(0.5,0.5) is exactly the mid point
@@ -316,7 +316,7 @@ define(['core/util', 'LF/sprite-select', 'core/support', 'LF/global'], function 
         if (xLimit > $.width - screenW) xLimit = $.width - screenW
         const spdX = (xLimit - $.camerax) * GA.camera.speed_factor * ($.dropframe + 1)
         if (spdX !== 0) {
-          if (spdX > -0.05 && spdX < 0.05) {
+          if (spdX > -0.1 && spdX < 0.1) { // 2x port: 0.05 -> 0.1
             $.camerax = xLimit
           } else {
             $.camerax = $.camerax + spdX

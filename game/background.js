@@ -38,7 +38,7 @@ requirejs([
     document.body.appendChild(LFwindow)
     const canvas = get_canvas()
     const background_layer = new Fsprite({ canvas: canvas, type: 'group' })
-    background_layer.set_x_y(0, -128)
+    background_layer.set_x_y(0, -256) // 2x port: -128 -> -256
     if (Fsprite.renderer === 'DOM') { background_layer.el.className = 'background' }
     new background({
       layers: background_layer,

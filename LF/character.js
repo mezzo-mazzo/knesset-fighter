@@ -498,8 +498,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                 var dx = 0
                 if ($.con.state.left) { dx -= 1 }
                 if ($.con.state.right) { dx += 1 }
-                $.ps.vx = dx * ($.data.bmp.jump_distance - 1)
-                $.ps.vz = $.dirv() * ($.data.bmp.jump_distancez - 1)
+                $.ps.vx = dx * ($.data.bmp.jump_distance - 2) // 2x port: -1 -> -2
+                $.ps.vz = $.dirv() * ($.data.bmp.jump_distancez - 2) // 2x port: -1 -> -2
                 $.ps.vy = $.data.bmp.jump_height // upward force
               }
             }
@@ -537,8 +537,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             if (($.frame.PN >= 9 && $.frame.PN <= 11) || // if previous is running
               ($.frame.PN === 215)) // or crouch
             {
-              $.ps.vx = $.dirh() * ($.data.bmp.dash_distance - 1) * ($.frame.N === 213 ? 1 : -1)
-              $.ps.vz = $.dirv() * ($.data.bmp.dash_distancez - 1)
+              $.ps.vx = $.dirh() * ($.data.bmp.dash_distance - 2) * ($.frame.N === 213 ? 1 : -1) // 2x port: -1 -> -2
+              $.ps.vz = $.dirv() * ($.data.bmp.dash_distancez - 2) // 2x port: -1 -> -2
               $.ps.vy = $.data.bmp.dash_height
             }
             break
@@ -623,7 +623,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             if ($.frame.D.dvx) {
               if (($.ps.vx > 0 ? 1 : -1) !== $.dirh()) {
                 const avx = $.ps.vx > 0 ? $.ps.vx : -$.ps.vx
-                const dirx = 2 * ($.ps.vx > 0 ? 1 : -1)
+                const dirx = 4 * ($.ps.vx > 0 ? 1 : -1) // 2x port: 2 -> 4
                 if ($.ps.y < 0 || avx < $.frame.D.dvx) {
                   $.ps.vx = dirx * $.frame.D.dvx
                 }
@@ -881,14 +881,14 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                   $.trans.set_next(182)
                   var vy = $.ps.vy > 0 ? $.ps.vy : -$.ps.vy
                   if ($.ps.vy == 0) {
-                    $.ps.vy = 5*($.ps.vy>0?1:-1); //magic number
-                    vy = 5*($.ps.vy>0?1:-1); //magic number
+                    $.ps.vy = 10*($.ps.vy>0?1:-1); //magic number; 2x port: 5 -> 10
+                    vy = 10*($.ps.vy>0?1:-1); //magic number; 2x port: 5 -> 10
                   }
-                  if (vy >= 0 && vy <= 4) {
+                  if (vy >= 0 && vy <= 8) { // 2x port: 4 -> 8
                     $.trans.set_wait(2)
-                  } else if (vy > 4 && vy < 7) {
+                  } else if (vy > 8 && vy < 14) { // 2x port: 4 -> 8, 7 -> 14
                     $.trans.set_wait(3)
-                  } else if (vy >= 7) {
+                  } else if (vy >= 14) { // 2x port: 7 -> 14
                     $.trans.set_wait(4)
                   }
                   break
@@ -897,8 +897,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                   break                
                 case 186:
                   if ($.ps.vy == 0) {
-                    $.ps.vy = 5*($.ps.vy>0?1:-1); //magic number
-                    vy = 5*($.ps.vy>0?1:-1); //magic number
+                    $.ps.vy = 10*($.ps.vy>0?1:-1); //magic number; 2x port: 5 -> 10
+                    vy = 10*($.ps.vy>0?1:-1); //magic number; 2x port: 5 -> 10
                   }
                   $.trans.set_next(187)
                   break
@@ -970,13 +970,13 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                     $.trans.frame(108)
                   }
                   if ($.ps.vx) {
-                    $.ps.vx = 5 * ($.ps.vx > 0 ? 1 : -1) // magic number
+                    $.ps.vx = 10 * ($.ps.vx > 0 ? 1 : -1) // magic number; 2x port: 5 -> 10
                   }
                   if ($.ps.vy == 0) {
-                    $.ps.vy = 5 * ($.ps.vy > 0 ? 1 : -1) //magic number
+                    $.ps.vy = 10 * ($.ps.vy > 0 ? 1 : -1) //magic number; 2x port: 5 -> 10
                   }
                   if ($.ps.vz) {
-                    $.ps.vz = 2 * ($.ps.vz > 0 ? 1 : -1) // magic number
+                    $.ps.vz = 4 * ($.ps.vz > 0 ? 1 : -1) // magic number; 2x port: 2 -> 4
                   }
                   return 1
                 }
@@ -1244,7 +1244,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
           case 'state3_frame':
             switch ($.frame.N) {
               case 267:
-                $.ps.vy += 1
+                $.ps.vy += 2 // 2x port: 1 -> 2
                 return 1
             }
             break
@@ -1270,7 +1270,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         switch (event) {
           case 'state3_frame':
             if ($.frame.N >= 273 && $.frame.N <= 276) {
-              $.ps.vy = -6.8
+              $.ps.vy = -13.6 // 2x port: -6.8 -> -13.6
             }
             break
           case ('rudolf_transform'):
@@ -1278,8 +1278,8 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               $.transform_character = {
                 id:  $.catching.id, // create_characters
                 uid: $.catching.uid, // panel
-                opoint: { // smoke
-                  kind: 1, x: 41, y: 70, action: 70, dvx: 0, dvy: 0, oid: 204, facing: 0
+                opoint: { // smoke; 2x port: x 41->82, y 70->140
+                  kind: 1, x: 82, y: 140, action: 70, dvx: 0, dvy: 0, oid: 204, facing: 0
                 },
                 is_rudolf_transform: true,
               }
@@ -1599,7 +1599,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         ITR.kind === 9) // reflective shield
       {
         accepthit = true
-        const compen = $.ps.y === 0 ? 1 : 0 // magic compensation
+        const compen = $.ps.y === 0 ? 2 : 0 // magic compensation; 2x port: 1 -> 2
         const attdir = att.ps.vx === 0 ? att.dirh() : (att.ps.vx > 0 ? 1 : -1)
         ef_dvx = ITR.dvx ? attdir * (ITR.dvx - compen) : 0
         ef_dvy = ITR.dvy ? ITR.dvy : 0
@@ -1979,7 +1979,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               type: 'computer',
               id: $.id,
               team: $.team,
-              pos: {x: $.ps.x + 20*(-1*i), y: $.ps.y, z: $.ps.z},
+              pos: {x: $.ps.x + 40*(-1*i), y: $.ps.y, z: $.ps.z}, // 2x port: 20 -> 40
               spec: {
                 is_npc: true,
                 health: {
