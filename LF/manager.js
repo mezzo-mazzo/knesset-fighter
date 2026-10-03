@@ -181,7 +181,10 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         randomseed.seed(Math.floor(Math.random() * 0x7FFFFFFF))
 
         // prepare
-        char_list = util.select_from(pack.data.object, { type: 'character' })
+        // `hidden` characters stay loadable (their data and specialattacks) but are not offered in selection
+        char_list = util.selectA_from(pack.data.object, function (O) {
+          return O.type === 'character' && !O.hidden
+        })
         char_list[-1] = { name: 'Random' }
         img_list = Futil.extract_array(char_list, 'pic').pic
         AI_list = pack.data.AI.slice(0)
@@ -1157,7 +1160,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               use: true,
               name: 'CRUSHER',
               type: 'computer',
-              selected: 10,
+              selected: char_index(13), // Lapid
               selected_AI: 0,
               team: 1
             },
@@ -1165,7 +1168,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               use: true,
               name: 'dumbass',
               type: 'computer',
-              selected: 8,
+              selected: char_index(9), // Dennis
               selected_AI: 2,
               team: 2
             }
@@ -1249,6 +1252,13 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           session.control[i].fetch()
         }
         manager.sound.TU()
+      }
+      /* index into `char_list` of the character with data `id` */
+      function char_index(id) {
+        for (let i = 0; i < char_list.length; i++) {
+          if (char_list[i].id === id) { return i }
+        }
+        return 0
       }
       function random_character() {
         return Math.floor(randomseed.next() * char_list.length)
