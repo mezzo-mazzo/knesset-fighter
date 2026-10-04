@@ -12,7 +12,7 @@
 
     requirejs([
         'core/support', 'LF/loader!' + flf_config.package, 'LF/manager',
-        'LF/util', './buildinfo.js', 'core/css!LF/application.css'
+        'LF/util', 'game/buildinfo.js', 'core/css!LF/application.css'
     ], function (Fsupport, package, Manager, util, buildinfo) {
 
         if (typeof (console) === 'undefined') {

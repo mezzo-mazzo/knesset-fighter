@@ -3,7 +3,7 @@
  *
  * drives the user interface and starts matches.
  *
- * the UI itself is plain HTML (game/game.html): every screen is in the document
+ * the UI itself is plain HTML (index.html): every screen is in the document
  * at all times and `switch_UI` only swaps a `state-<screen>` class on `.LFroot`,
  * which the stylesheets turn into visibility. this manager therefore never
  * touches `style.display` and never builds UI elements; it fills in text,
