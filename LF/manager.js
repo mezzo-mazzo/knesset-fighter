@@ -13,9 +13,11 @@
  * maximize/restore state.
 \*/
 define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/touchcontroller', 'third_party/random',
-  'core/util', 'LF/sprite-select', 'core/sprite-dom', 'core/controller', 'core/resourcemap', 'core/support'],
+  'core/util', 'LF/sprite-select', 'core/sprite-dom', 'core/controller', 'core/resourcemap', 'core/support',
+  'LF/webrtc', 'third_party/qrcode'],
   function (global, network, Soundpack, Match, util, Touchcontroller, Random,
-    Futil, Fsprite, Fsprite_dom, Fcontroller, Fresourcemap, Fsupport) {
+    Futil, Fsprite, Fsprite_dom, Fcontroller, Fresourcemap, Fsupport,
+    webrtc, qrcode) {
     function Manager(pack, buildinfo) {
       const param = util.location_parameters()
 
@@ -39,6 +41,9 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
        * on every load (see `create`) so that the 'Random' character and
        * background picks actually differ from one run to the next. */
       const network_randomseed = 824163532
+      // stored once the player went through the control settings; a guest of
+      // a network game who never did is asked to before joining
+      const keyboard_set_key = 'F.LF/keyboard_set'
 
       this.create = function () {
         require(['core/css!' + pack.path + 'UI/UI.css'], function () { })
@@ -58,13 +63,20 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           allow_wide: false
         }
 
+        let alert_then // called once the alert is dismissed
         util.div('alert_box_ok').onclick = function () {
           util.div('alert_box').hidden = true
+          if (alert_then) {
+            const then = alert_then
+            alert_then = null
+            then()
+          }
         }
-        manager.alert = function (mess) {
+        manager.alert = function (mess, then) {
           console.error(mess)
           util.div('alert_message').innerHTML = mess
           util.div('alert_box').hidden = false
+          alert_then = then
         }
 
         session =
@@ -95,10 +107,6 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             [
               { name: 'player1' }, { name: 'player2' }
             ],
-          server:
-          {
-            'Project F Official Lobby': 'http://lobby.projectf.hk'
-          },
           support_sound: false
         }
         if (Fsupport.localStorage) {
@@ -192,7 +200,19 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         bg_list[-1] = { name: 'Random' }
 
         this.create_UI()
-        if (param.demo) {
+        const offer = webrtc.read('offer', window.location.hash)
+        const answer = webrtc.read('answer', window.location.hash)
+        // a link pasted into a tab already running the game only changes the hash
+        window.addEventListener('hashchange', function () {
+          if (webrtc.read('offer', window.location.hash) || webrtc.read('answer', window.location.hash)) {
+            window.location.reload()
+          }
+        })
+        if (offer) {
+          this.UI_list.network_game.join(offer) // opened with an invitation link
+        } else if (answer) {
+          this.UI_list.network_game.relay(answer) // opened with a reply link
+        } else if (param.demo) {
           this.start_demo(true)
         } else if (param.demo_display) {
           this.start_demo(false)
@@ -254,36 +274,39 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           util.div().classList.remove('multiplayer_ready')
         }
       }
+      /*\
+       * start a network session over `server` (a lobby server, or `{transport}`).
+       * `param.role` is 'active' (its players come first) or 'passive', and
+       * `param.per_peer` the number of players at each end: 2 by default, 1 in
+       * a game made with an invitation link, which then starts PvP right away.
+      \*/
       function create_network_controllers(server, param) {
+        const per_peer = param.per_peer || 2
         const handler = {
           on: function (event, mess) {
             switch (event) {
               case 'open':
                 var controller_config = { up: 'w', down: 'x', left: 'a', right: 'd', def: 'z', jump: 'q', att: 's' }
-                if (settings.control[1].type === 'none') {
+                if (per_peer === 2 && settings.control[1].type === 'none') {
                   settings.control[1].type = 'keyboard' // a network game always plays two local players
                   setup_controllers()
                 }
                 session.network = true
                 randomseed.seed(network_randomseed) // both peers must draw the same numbers
-                if (param.role === 'active') {
-                  session.control[0] = new network.controller('local', session.control[0])
-                  session.control[1] = new network.controller('local', session.control[1])
-                  session.control[2] = new network.controller('remote', controller_config)
-                  session.control[3] = new network.controller('remote', controller_config)
-                  session.control.length = 4
-                  session.control.f = new network.controller('dual', session.control.f)
-                } else if (param.role === 'passive') {
-                  const hold0 = session.control[0]
-                  const hold1 = session.control[1]
-                  session.control[2] = new network.controller('local', hold0)
-                  session.control[3] = new network.controller('local', hold1)
-                  session.control[0] = new network.controller('remote', controller_config)
-                  session.control[1] = new network.controller('remote', controller_config)
-                  session.control.my_offset = 2
-                  session.control.length = 4
-                  session.control.f = new network.controller('dual', session.control.f)
+                const own = [] // the controllers of this end
+                for (let i = 0; i < per_peer; i++) {
+                  own[i] = session.control[i]
                 }
+                const offset = param.role === 'active' ? 0 : per_peer
+                for (let i = 0; i < per_peer * 2; i++) {
+                  session.control[i] = i >= offset && i < offset + per_peer
+                    ? new network.controller('local', own[i - offset])
+                    : new network.controller('remote', controller_config)
+                }
+                session.control.my_offset = offset
+                session.control.length = per_peer * 2
+                session.control.f = new network.controller('dual', session.control.f)
+                util.div().classList.remove('network_guest')
                 util.div().classList.add('network_session')
                 util.div().classList.add('multiplayer_ready')
                 network.transfer(
@@ -298,27 +321,28 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                     if (buildinfo.version !== info.buildversion) {
                       manager.alert('Your program version (' + buildinfo.timestamp + ') is incompatible with your peer (' + info.buildversion + '). Please reload.')
                     }
-                    if (param.role === 'active') {
-                      session.player[0] = settings.player[0]
-                      session.player[1] = settings.player[1]
-                      session.player[2] = info.player[0]
-                      session.player[3] = info.player[1]
-                    } else if (param.role === 'passive') {
-                      session.player[0] = info.player[0]
-                      session.player[1] = info.player[1]
-                      session.player[2] = settings.player[0]
-                      session.player[3] = settings.player[1]
+                    for (let i = 0; i < per_peer; i++) {
+                      session.player[offset + i] = settings.player[i]
+                      session.player[per_peer - offset + i] = info.player[i]
                     }
                     manager.UI_list.settings.keychanger.call(manager.UI_list.settings)
-                    util.div('network_game_cancel').innerHTML = 'OK'
+                    if (server.transport) {
+                      // the selection clock runs in lockstep, so it does not
+                      // matter which end gets here first
+                      flow = new_flow('pvp')
+                      start_character_selection()
+                    }
                   })
                 break
               case 'close':
-                manager.alert('peer disconnected')
+                if (server.transport) {
+                  manager.alert('Your opponent left the game', manager.UI_list.network_game.quit)
+                } else {
+                  manager.alert('peer disconnected')
+                }
                 break
               case 'log':
                 console.log(mess)
-                util.div('network_log').value += mess + '\n'
                 break
               case 'error':
                 manager.alert(mess)
@@ -349,7 +373,8 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                 start_character_selection()
               } else if (action === 'network_game') {
                 if (window.location.href.indexOf('http') === 0) {
-                  manager.switch_UI('network_game')
+                  manager.sound.play('1/m_ok')
+                  manager.UI_list.network_game.choose()
                 } else {
                   manager.alert('network game must run under http://')
                 }
@@ -418,7 +443,16 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         {
           create: function () {
             menu_onclick(util.div('settings_menu'), function () {
-              manager.switch_UI('frontpage')
+              if (Fsupport.localStorage) {
+                Fsupport.localStorage.setItem('F.LF/settings', JSON.stringify(settings))
+                Fsupport.localStorage.setItem(keyboard_set_key, '1')
+              }
+              const network_game = manager.UI_list.network_game
+              if (network_game.joining) {
+                network_game.reply(network_game.joining) // the keys are set, join now
+              } else {
+                manager.switch_UI('frontpage')
+              }
             })
             this.keychanger.call(this)
           },
@@ -539,110 +573,232 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             }
           }
         },
+        /*\
+         * the serverless network game (see LF/webrtc). the host picks how to
+         * send the invitation; a page opened with that invitation link is the
+         * guest, it plays player 2 and cannot leave the game except by quitting.
+        \*/
         network_game:
         {
           create: function () {
             const This = this
-            this.last_value = 'http://myserver.com:8080'
-            for (const S in settings.server) {
-              var op = document.createElement('option')
-              op.innerHTML = op.value = S
-              util.div('server_select').appendChild(op)
-            }
-            var op = document.createElement('option')
-            let last_option
-            op.value = 'third_party_server'
-            op.innerHTML = 'third party server'
-            util.div('server_select').appendChild(op)
-            util.div('server_select').onchange = function () {
-              if (this.value === 'third_party_server') {
-                util.div('server_address').value = (prompt('Enter server address: ', This.last_value) || This.last_value)
-                util.div('server_address').readOnly = false
+            menu_onclick(util.div('network_menu'), function (action) {
+              if (action === 'back') {
+                manager.sound.play('1/m_cancel')
+                manager.switch_UI('frontpage')
               } else {
-                if (last_option === 'third_party_server') {
-                  This.last_value = util.div('server_address').value
-                }
-                util.div('server_address').value = settings.server[this.value]
-                util.div('server_address').readOnly = true
+                manager.sound.play('1/m_ok')
+                This.invite(action === 'invite_qr')
               }
-              last_option = this.value
+            })
+            util.div('network_cancel').onclick = function () {
+              This.close()
+              This.choose()
             }
-            util.div('server_select').onchange()
-            util.div('network_game_cancel').innerHTML = 'Cancel'
-            util.div('network_game_cancel').onclick = function () {
-              manager.switch_UI('frontpage')
-            }
-            if (param.server) {
-              const address = param.server.replace(/\|/g, '/')
-              util.div('server_select').value = 'third_party_server'
-              util.div('server_address').value = address
-            }
-            util.div('server_connect').onclick = function () {
-              const server_address = normalize_address(util.div('server_address').value)
-              if (!This.connecting) {
-                const request = new XMLHttpRequest()
-                request.onreadystatechange = function () {
-                  if (this.readyState === 4) {
-                    This.connecting = false
-                    if (this.status === 200) {
-                      const server = JSON.parse(this.responseText)
-                      if (!settings.server[server.name]) { settings.server[server.name] = server_address }
-                      manager.UI_list.lobby.start(server)
-                      manager.switch_UI('lobby')
-                    } else {
-                      manager.alert('[' + this.status + '] Failed to connect to server')
-                    }
-                  }
-                }
-                request.open('GET', server_address + '/protocol', true)
-                request.responseType = 'text'
-                request.timeout = 2000
-                request.send()
-                This.connecting = true
+            util.div('network_quit').onclick = this.quit
+            util.div('network_copy').onclick = function () {
+              const button = this
+              const link = util.div('network_link')
+              link.select()
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(link.value).then(copied, copy_selection)
+              } else {
+                copy_selection()
+              }
+              function copy_selection() {
+                document.execCommand('copy')
+                copied()
+              }
+              function copied() {
+                button.innerHTML = "Copied<span class='label_local'>הועתק</span>"
+                setTimeout(function () {
+                  button.innerHTML = "Copy<span class='label_local'>העתק</span>"
+                }, 1500)
               }
             }
-            function normalize_address(str) {
-              if (str.charAt(str.length - 1) === '/') {
-                return str.slice(0, str.length - 1)
-              }
-              return str
+            util.div('network_share').onclick = function () {
+              navigator.share({ title: document.title, url: util.div('network_link').value })
+                .catch(function () { }) // the player closed the share sheet
+            }
+            util.div('network_connect').onclick = function () {
+              This.accept(util.div('network_reply').value)
             }
           },
           onactive: function () {
-            Fcontroller.block(false)
+            Fcontroller.block(false) // let the link fields get their keys
           },
           deactive: function () {
             Fcontroller.block(true)
-          }
-        },
-        lobby:
-        {
-          start: function (server) {
-            const iframe = util.div('lobby_window')
-            iframe.src = server.address + '/lobby'
-            iframe.onload = function () {
-              iframe.contentWindow.postMessage({
-                init: true,
-                protocol: 'F.Lobby 0.1',
-                room: 'F.LF'
-              }, server.address)
+          },
+          /* the front page entry: offer the two ways of inviting */
+          choose: function () {
+            this.step('choose')
+            manager.switch_UI('network_game')
+          },
+          step: function (name) {
+            set_class(util.div('network_game'), 'step-', name)
+          },
+          status: function (label, label_local) {
+            util.div('network_status').innerHTML =
+              "<div class='label'>" + label + "</div><div class='label_local'>" + label_local + '</div>'
+          },
+          /* show `link` as a QR code and/or as text to copy and share */
+          show_link: function (link, as_qr, as_text) {
+            const qr = util.div('network_qr')
+            qr.hidden = !(link && as_qr)
+            if (link && as_qr) {
+              const code = qrcode(0, 'L')
+              code.addData(link)
+              code.make()
+              qr.src = code.createDataURL(4, 4)
             }
-            util.div('lobby', 'close_button').onclick = function () {
+            util.div('network_link_row').hidden = !(link && as_text)
+            util.div('network_link').value = link || ''
+            util.div('network_share').hidden = !navigator.share
+          },
+          open_peer: function () {
+            const This = this
+            this.close()
+            const peer = this.peer = new webrtc.Peer()
+            peer.onfail = function () {
+              if (peer === This.peer) {
+                This.status('Could not connect. Please try again.', 'החיבור נכשל. נסו שוב.')
+              }
+            }
+            return peer
+          },
+          close: function () {
+            if (this.peer) {
+              this.peer.close()
+              this.peer = null
+            }
+            if (this.listener) {
+              this.listener.close()
+              this.listener = null
+            }
+          },
+          /* host: create an invitation and wait for the reply */
+          invite: function (as_qr) {
+            const This = this
+            this.step('invite')
+            this.show_link(null)
+            util.div('network_reply').value = ''
+            if (!webrtc.supported) {
+              this.status('This browser cannot play network games', 'הדפדפן הזה לא תומך במשחק ברשת')
+              return
+            }
+            this.status('Preparing the invitation...', 'מכין הזמנה...')
+            const peer = this.open_peer()
+            peer.onopen = function () { This.start(peer, 'active') }
+            peer.invite().then(function (link) {
+              if (peer !== This.peer) {
+                return // cancelled meanwhile
+              }
+              if (as_qr) {
+                This.status('Let your friend scan this code with their phone', 'תנו לחבר לסרוק את הקוד עם הטלפון')
+              } else {
+                This.status('Send this link to your friend', 'שלחו את הקישור הזה לחבר')
+              }
+              This.show_link(link, as_qr, !as_qr)
+              if (webrtc.relay.supported) {
+                // the reply link may well be opened in this very browser
+                This.listener = webrtc.relay.listen(function (answer) {
+                  This.accept(answer)
+                })
+              }
+            }, peer.onfail)
+          },
+          /* host: connect with the guest's reply link */
+          accept: function (text) {
+            const This = this
+            const peer = this.peer
+            if (!peer || peer.accepting) {
+              return
+            }
+            peer.accepting = true
+            this.status('Connecting...', 'מתחבר...')
+            peer.accept(text).catch(function () {
+              peer.accepting = false
+              This.status('That is not a reply link to this invitation', 'זה לא קישור תשובה להזמנה הזאת')
+            })
+          },
+          /*\
+           * guest: opened with an invitation link. a desktop player who never
+           * set the keyboard up does that first (the settings screen comes
+           * back to `reply`).
+          \*/
+          join: function (offer) {
+            util.div().classList.add('network_guest')
+            if (!webrtc.supported) {
+              this.step('join')
+              this.status('This browser cannot play network games', 'הדפדפן הזה לא תומך במשחק ברשת')
               manager.switch_UI('network_game')
+              return
             }
-            // cross window communication
-            window.addEventListener('message', windowMessage, false)
-            function windowMessage(event) {
-              if (event.origin !== server.address) {
-                return
-              }
-              if (event.data.event === 'start') {
-                create_network_controllers(server, event.data)
-                util.div('server_connect').onclick = null
-                util.div('server_connect').innerHTML = '|'
-                manager.switch_UI('network_game')
-              }
+            const keyboard_set = Fsupport.localStorage && Fsupport.localStorage.getItem(keyboard_set_key)
+            if (!controllers.touch && !keyboard_set) {
+              this.joining = offer
+              manager.switch_UI('settings')
+              return
             }
+            this.reply(offer)
+          },
+          /* guest: answer the invitation with a reply link */
+          reply: function (offer) {
+            const This = this
+            this.joining = null
+            this.step('reply')
+            this.show_link(null)
+            this.status('Preparing your reply...', 'מכין תשובה...')
+            manager.switch_UI('network_game')
+            const peer = this.open_peer()
+            peer.onopen = function () { This.start(peer, 'passive') }
+            peer.join(offer).then(function (link) {
+              if (peer !== This.peer || session.network) {
+                return // already connected
+              }
+              This.status('Send this reply link back to whoever invited you', 'שלחו את קישור התשובה בחזרה למי שהזמין אתכם')
+              This.show_link(link, true, true)
+            }, peer.onfail)
+          },
+          /* a page opened with a reply link: hand it to the waiting host tab */
+          relay: function (answer) {
+            const This = this
+            util.div().classList.add('network_guest')
+            this.step('relay')
+            this.show_link(null)
+            manager.switch_UI('network_game')
+            if (!webrtc.relay.supported) {
+              not_delivered()
+              return
+            }
+            this.status('Looking for the invitation...', 'מחפש את ההזמנה...')
+            webrtc.relay.deliver(answer, function (delivered) {
+              if (delivered) {
+                This.status('Reply delivered. You can close this tab and go back to the game.',
+                  'התשובה נמסרה. אפשר לסגור את הלשונית ולחזור למשחק.')
+              } else {
+                not_delivered()
+              }
+            })
+            function not_delivered() {
+              This.status('No invitation is waiting in this browser. Paste this link into the game that invited you.',
+                'אין הזמנה ממתינה בדפדפן הזה. הדביקו את הקישור במשחק שהזמין אתכם.')
+              This.show_link(window.location.href, false, true)
+            }
+          },
+          start: function (peer, role) {
+            if (this.listener) {
+              this.listener.close()
+              this.listener = null
+            }
+            this.status('Connected!', 'מחובר!')
+            create_network_controllers({ transport: peer }, { role: role, per_peer: 1 })
+          },
+          /* leave the network game: start over on a clean front page */
+          quit: function () {
+            manager.UI_list.network_game.close()
+            window.location.replace(webrtc.base_url())
           }
         },
         character_selection:
@@ -794,6 +950,9 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               }
               for (let i = 0; i < this.humans; i++) {
                 if (this.done[i]) { return } // somebody is already committed
+              }
+              if (session.network) {
+                return // a network game is only left by quitting
               }
               manager.sound.play('1/m_cancel')
               manager.switch_UI('frontpage')
