@@ -44,7 +44,7 @@ The two repositories [F.LF](https://github.com/Project-F/F.LF) and [LF2_19](http
  |--LF2_19
 ```
 
-Then simply open `game/game.html` in your favourite browser.
+Then simply open `index.html` in your favourite browser.
 
 ## License
 
