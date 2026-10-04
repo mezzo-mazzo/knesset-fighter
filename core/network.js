@@ -6,7 +6,8 @@
 /*\
  * network.setup
  [ method ]
- - config (object) `{server, param}` (accquired from F.Lobby)
+ - config (object) `{server, param}` (accquired from F.Lobby). `server.transport`
+   may hold a ready transport object instead of `server.address` + `server.library`
  - monitor (object) `{on:function}`
  *
  * report status events by calling `monitor.on(event, data)`
@@ -217,19 +218,12 @@ define(function () {
     }
     This.already = true
     This.monitor = monitor
-    requirejs([get_host(config.server.address) + config.server.library], function (transport) {
-      transport.setup(config, handler)
-      network.teardown = function () {
-        transport.teardown()
-        teardown()
-      }
-    })
 
     const id1 = config.param.id1
     const id2 = config.param.id2
     if (!monitor) { monitor = { on: function () { } } }
 
-    var handler = {
+    const handler = {
       on: function (event, data) {
         switch (event) {
           case 'open':
@@ -255,6 +249,20 @@ define(function () {
             break
         }
       }
+    }
+
+    function start(transport) {
+      network.teardown = function () {
+        transport.teardown()
+        teardown()
+      }
+      transport.setup(config, handler)
+    }
+    // the transport is either handed over ready-made or loaded from the server
+    if (config.server.transport) {
+      start(config.server.transport)
+    } else {
+      requirejs([get_host(config.server.address) + config.server.library], start)
     }
   }
   function get_host(ppp) {

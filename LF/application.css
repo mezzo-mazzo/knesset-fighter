@@ -13,7 +13,7 @@
  * the screens are, in the order the player walks through them:
  *   frontpage -> arcade_menu -> difficulty -> bot_count -> character_selection
  *             -> arena_selection -> gameplay
- *   frontpage -> settings | network_game -> lobby
+ *   frontpage -> settings | network_game
  *
  * other classes on `.LFroot`:
  *   .mobile / .desktop  device class (userAgent), gates device specific UI
@@ -21,6 +21,8 @@
  *   .wide               gameplay is running on a wide screen (>15/9)
  *   .network_session    a network game is set up: the control settings show the
  *                       two remote controllers as well
+ *   .network_guest      this page was opened with an invitation link and is
+ *                       joining somebody else's network game
  *
  * artwork, colours and art-dependent geometry live in the content package
  * stylesheet (characters/UI/UI.css).
@@ -158,21 +160,6 @@ html, body
 .LFroot.state-gameplay .gameplay
 {
 	display:block;
-}
-.lobby
-{
-	position:absolute;
-	left:0; top:0; right:0; bottom:0;
-	display:none;
-	flex-flow: column nowrap;
-	justify-content: center;
-	align-content: center;
-	align-items: center;
-	z-index:10;
-}
-.LFroot.state-lobby .lobby
-{
-	display:flex;
 }
 /* ---] */
 
@@ -324,78 +311,148 @@ html, body
 }
 /* ---] */
 
-/* [--- network game */
-.network_game_menu
+/* [--- network game: invite (host) and join (guest) a serverless game.
+        `.network_game` carries `step-<step>`, see game.html */
+.network_panel
 {
 	position:absolute;
-	left:360px; top:460px; /* 2x port: 180,230 -> 360,460 */
+	left:244px; right:244px; top:150px; bottom:70px;
+	box-sizing:border-box;
+	background:var(--flf_panel_dark);
+	border:6px solid var(--flf_accent);
+	border-radius:20px;
+	font-family:var(--flf_font);
 }
-.server_select, .network_game button, .network_game input
+.network_menu
+{
+	left:calc(50% - 300px);
+	top:220px;
+	width:600px;
+}
+.network_invite
+{
+	position:absolute;
+	left:40px; right:40px; top:60px; bottom:30px;
+	display:flex;
+	flex-flow:column nowrap;
+	align-items:center;
+	gap:18px;
+	color:#FFF;
+	font-size:28px;
+	text-align:center;
+}
+.network_game.step-choose .network_invite,
+.network_game:not(.step-choose) .network_menu
+{
+	display:none;
+}
+/* only the host waits for a reply */
+.network_game:not(.step-invite) .network_reply_row
+{
+	display:none;
+}
+.network_status .label_local,
+.network_hint .label_local
+{
+	display:block;
+	font-size:0.9em;
+	text-align:center;
+}
+.network_qr
+{
+	width:400px; height:400px;
+	image-rendering:pixelated;
+	background:#FFF;
+}
+.network_link_row,
+.network_reply_row
+{
+	width:100%;
+	display:flex;
+	flex-flow:row wrap;
+	justify-content:center;
+	gap:12px;
+}
+.network_hint
+{
+	width:100%;
+	color:var(--flf_accent);
+}
+.network_game input,
+.network_game button,
+.network_quit
 {
 	background:#1e337a;
 	font-family:Helvetica,sans-serif;
 	font-weight:bold;
-	font-size:26px; /* 2x port: 14 -> 26 */
+	font-size:26px;
 	color:#FFF;
-	border:1px solid #FFF;
+	border:2px solid var(--flf_accent);
+	border-radius:10px;
 	padding:10px 20px;
 }
-.server_select
+.network_game input
 {
-	width:500px; /* 2x port: 250 -> 500 */
-}
-.network_game button
-{
-	width:190px; /* 2x port: 95 -> 190 */
-}
-.server_address
-{
-	width:820px; /* 2x port: 410 -> 820 */
-}
-.network_log
-{
-	width:890px; /* 2x port: 445 -> 890 */
-	height:400px; /* 2x port: 200 -> 400 */
-	text-align:left;
-	background:none;
-	border:none;
-	color:#FFF;
+	flex:1 1 auto;
+	min-width:0;
 	font-family:monospace;
-	font-size:24px; /* 2x port: 12 -> 24 */
-	resize:none;
+	font-weight:normal;
+	font-size:22px;
+	-webkit-user-select:text;
+	user-select:text;
 }
-.lobby > *
+.network_game button,
+.network_quit
 {
-	width:100%;
-}
-.lobby_window
-{
-	flex: 1 1 auto;
-	border: none;
-}
-.lobby .header
-{
-	height:50px;
-	min-height:50px;
-	background:#444466;
-	font-size:15px;
-	line-height:50px;
-}
-.lobby .nav
-{
-	padding-left: 10px;
-}
-.lobby .nav > a
-{
-	color:#FFF;
-	padding:10px;
-	text-decoration:none;
-	border:1px solid white;
 	cursor:pointer;
 }
-.lobby .nav > a:hover
+.network_game button .label_local,
+.network_quit .label_local
 {
-	background:#449;
+	margin-left:10px;
+	font-size:0.85em;
+}
+.network_game button:hover,
+.network_quit:hover
+{
+	border-color:#FFF;
+}
+.network_cancel
+{
+	margin-top:auto;
+}
+/* a guest is locked into the network game: it only gets to quit */
+.network_game.step-join .network_cancel,
+.network_game.step-reply .network_cancel,
+.network_game.step-relay .network_cancel
+{
+	display:none;
+}
+.network_quit
+{
+	position:absolute;
+	right:16px; bottom:16px;
+	z-index:5;
+	display:none;
+	opacity:0.75;
+}
+.LFroot.network_session .network_quit,
+.LFroot.network_guest .network_quit
+{
+	display:block;
+}
+/* a guest sets up player 1's keys only */
+.settings .join_note,
+.LFroot.network_guest .keychanger .player_col_1
+{
+	display:none;
+}
+.LFroot.network_guest .settings .join_note
+{
+	display:block;
+	margin-bottom:20px;
+	font-size:28px;
+	text-align:center;
 }
 /* ---] */
 

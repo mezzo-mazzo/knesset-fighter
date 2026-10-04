@@ -59,6 +59,11 @@
 							<span class='label_local'>הגדרות שלטים</span>
 						</span>
 					</div>
+					<!-- shown to a guest of a network game who never set the keys up -->
+					<div class='note join_note'>
+						<span class='label'>Set up your keys, then press OK to join the game</span>
+						<span class='label_local'>הגדירו את המקשים ולחצו אישור כדי להצטרף למשחק</span>
+					</div>
 					<table class='keychanger'>
 						<tbody>
 							<tr class='keychanger_row row_name'>
@@ -135,14 +140,51 @@
 				</div>
 			</div>
 
-			<div class='screen network_game'>
-				<div class='network_game_menu'>
-					<select class='server_select'>
-					</select>
-					<button class='server_connect'>Connect</button>
-					<button class='network_game_cancel'>Cancel</button>
-					<input class='server_address' type='url' value=''>
-					<textarea class='network_log' readonly></textarea>
+			<!--
+				the serverless network game (LF/webrtc.js). `network_game` carries a
+				`step-<step>` class: choose -> invite (host), join -> reply (guest),
+				relay (a tab opened with a reply link)
+			-->
+			<div class='screen network_game step-choose'>
+				<div class='network_panel'>
+					<div class='settings_title'>
+						<span class='title_text'>
+							<span class='label'>Network Game</span>
+							<span class='label_local'>משחק ברשת</span>
+						</span>
+					</div>
+					<ul class='menu panel_menu network_menu'>
+						<li class='menu_item' data-action='invite_qr'>
+							<div class='label'>Invite with QR</div>
+							<div class='label_local'>הזמנה בקוד QR</div>
+						</li>
+						<li class='menu_item' data-action='invite_link'>
+							<div class='label'>Invite by link</div>
+							<div class='label_local'>הזמנה בקישור</div>
+						</li>
+						<li class='menu_item' data-action='back'>
+							<div class='label'>Back</div>
+							<div class='label_local'>חזרה</div>
+						</li>
+					</ul>
+					<div class='network_invite'>
+						<div class='network_status'></div>
+						<img class='network_qr' alt='' hidden>
+						<div class='network_link_row' hidden>
+							<input class='network_link' type='text' readonly>
+							<button class='network_copy'>Copy<span class='label_local'>העתק</span></button>
+							<button class='network_share' hidden>Share<span class='label_local'>שתף</span></button>
+						</div>
+						<div class='network_reply_row'>
+							<div class='network_hint'>
+								<span class='label'>Then open the reply link your friend sends back, or paste it here:</span>
+								<span class='label_local'>אחר כך פתחו את קישור התשובה שהחבר שולח בחזרה, או הדביקו אותו כאן:</span>
+							</div>
+							<input class='network_reply' type='text'>
+							<button class='network_connect'>Connect<span class='label_local'>התחבר</span></button>
+						</div>
+						<button class='network_cancel'>Cancel<span class='label_local'>ביטול</span></button>
+					</div>
 				</div>
 			</div>
 
@@ -441,6 +483,8 @@
 				</div>
 			</div>
 
+			<!-- leaves a network game; shown while one is set up or being joined -->
+			<button class='network_quit'>Quit<span class='label_local'>יציאה</span></button>
 		</div>
 		<pre class='projectFmessage'>
                  ______
@@ -464,17 +508,6 @@
 	</div>
 
 	<div class='touch_control_holder'></div>
-
-	<div class='lobby'>
-		<div class='header'>
-			<div class='nav'>
-				<a>&nbsp;&nbsp;&nbsp;F.LF Lobby&nbsp;&nbsp;&nbsp;</a>
-				<a href='http://project-f.github.io/F.LF/docs/multiplayer.html' target='_blank' class='help_button'>&nbsp;?&nbsp;</a>
-				<a class='close_button'>&nbsp;X&nbsp;</a>
-			</div>
-		</div>
-		<iframe class='lobby_window'></iframe>
-	</div>
 
 </div>
 <pre id='flf-config' style='display:none'>
