@@ -1168,7 +1168,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               use: true,
               name: 'dumbass',
               type: 'computer',
-              selected: char_index(9), // Dennis
+              selected: char_index(15), // Golan
               selected_AI: 2,
               team: 2
             }
