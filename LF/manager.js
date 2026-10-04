@@ -95,7 +95,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             [
               {
                 type: 'keyboard',
-                config: { up: 'w', down: 'x', left: 'a', right: 'd', def: 'z', jump: 'q', att: 's' }
+                config: { up: 'up', down: 'down', left: 'left', right: 'right', def: 'shift', jump: 'space', att: 'x' }
               },
               {
                 /* player 2 does not exist until the player sets a controller up in
