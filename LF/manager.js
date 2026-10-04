@@ -23,6 +23,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
 
       let char_list,
         img_list,
+        upcoming_list,
         AI_list,
         bg_list,
         timer,
@@ -195,6 +196,8 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         })
         char_list[-1] = { name: 'Random' }
         img_list = Futil.extract_array(char_list, 'pic').pic
+        // upcoming characters: a portrait shown grayed out in the grid, never playable
+        upcoming_list = (pack.data.preview || []).slice(0)
         AI_list = pack.data.AI.slice(0)
         bg_list = pack.data.background.slice(0)
         bg_list[-1] = { name: 'Random' }
@@ -806,7 +809,8 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           create: function () {
             const This = this
             this.picker = new grid_picker(util.div('character_grid'))
-            this.picker.build(character_entries())
+            const grid = character_entries()
+            this.picker.build(grid.entries, { columns: grid.side, home: grid.center })
             this.picker.onmove = function () {
               This.refresh()
             }
@@ -929,7 +933,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                 kind: flow.picks.length === 0 ? 'human' : 'computer',
                 character: character
               })
-              this.picker.set_cursor(0, 0) // the next choice starts on random again
+              this.picker.set_cursor(0, this.picker.home) // the next choice starts on random again
             }
             manager.sound.play('1/m_join')
             if (this.complete()) {
@@ -1434,15 +1438,36 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         return 0
       }
       /*\
-       * the entries of the character grid: random first, so that the cursor
-       * starts there, then every character of the package
+       * the entries of the character grid: an odd sided square (3x3 for up to
+       * 8 characters) with random in the center cell, where the cursor starts,
+       * and the characters of the package around it in reading order, then the
+       * upcoming characters (`upcoming`: shown grayed out, never selectable).
+       * the cells left over are `null`, shown blank and never selectable.
       \*/
       function character_entries() {
-        const entries = [{ character: -1, name: char_list[-1].name }]
-        for (let i = 0; i < char_list.length; i++) {
-          entries.push({ character: i, name: char_list[i].name, pic: img_list[i] })
+        let side = Math.max(3, Math.ceil(Math.sqrt(char_list.length + upcoming_list.length + 1)))
+        if (side % 2 === 0) {
+          side++
         }
-        return entries
+        const center = (side * side - 1) / 2
+        const entries = []
+        let next = 0
+        let next_upcoming = 0
+        for (let i = 0; i < side * side; i++) {
+          if (i === center) {
+            entries.push({ character: -1, name: char_list[-1].name })
+          } else if (next < char_list.length) {
+            entries.push({ character: next, name: char_list[next].name, pic: img_list[next] })
+            next++
+          } else if (next_upcoming < upcoming_list.length) {
+            const U = upcoming_list[next_upcoming]
+            entries.push({ upcoming: true, name: U.name, name_local: U.name_local, pic: U.pic })
+            next_upcoming++
+          } else {
+            entries.push(null)
+          }
+        }
+        return { entries: entries, side: side, center: center }
       }
       function arena_entries() {
         const entries = [{ arena: -1, name: bg_list[-1].name }]
@@ -1571,6 +1596,11 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
      *
      * the cursor of player `p` is the class `cursor_p<p>` on a cell, and
      * `locked_p<p>` once that player settled on it; everything else is CSS.
+     *
+     * `options.columns` fixes the number of cells in a row (otherwise the grid
+     * stays roughly square), `options.home` is where the cursors start. a
+     * `null` entry is a `blank` cell that the cursors skip, an entry marked
+     * `upcoming` is an `upcoming` cell: shown, but skipped all the same.
     \*/
     function grid_picker(grid) {
       this.grid = grid
@@ -1578,9 +1608,14 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
       this.entries = []
       this.cursor = []
       this.locked = []
+      this.fixed_columns = 0
+      this.home = 0
     }
-    grid_picker.prototype.build = function (entries) {
+    grid_picker.prototype.build = function (entries, options) {
       const This = this
+      options = options || {}
+      this.fixed_columns = options.columns || 0
+      this.home = options.home || 0
       for (let i = 0; i < this.cells.length; i++) {
         this.grid.removeChild(this.cells[i])
       }
@@ -1590,9 +1625,15 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         const cell = clone_template(this.grid)
         const index = i
         fill_portrait(cell.getElementsByClassName('cell_portrait')[0], entries[i])
-        cell.getElementsByClassName('cell_label')[0].innerHTML = entries[i].name
+        const label = cell.getElementsByClassName('cell_label')[0]
+        if (entries[i] && entries[i].upcoming) {
+          label.innerHTML = "<span class='label'>soon</span><span class='label_local'>בקרוב</span>" // instead of the name
+        } else {
+          label.innerHTML = entries[i] ? entries[i].name : '&nbsp;' // keeps the blank cell as tall as the others
+        }
+        cell.className = this.cell_class(i)
         cell.onclick = function () {
-          if (This.onclick_cell) {
+          if (This.selectable(index) && This.onclick_cell) {
             This.onclick_cell(index)
           }
         }
@@ -1614,20 +1655,29 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
       if (!outer) {
         return
       }
-      const columns = Math.ceil(Math.sqrt(this.cells.length))
+      const columns = this.fixed_columns || Math.ceil(Math.sqrt(this.cells.length))
       this.grid.style.width = (columns * outer) + 'px'
     }
     grid_picker.prototype.reset_cursors = function (count) {
       for (let i = 0; i < this.cells.length; i++) {
-        this.cells[i].className = 'cell'
+        this.cells[i].className = this.cell_class(i)
       }
       this.cursor = []
       this.locked = []
       for (let p = 0; p < count; p++) {
-        this.cursor[p] = 0
+        this.cursor[p] = this.home
         this.locked[p] = false
         this.paint(p, true)
       }
+    }
+    /* whether a cursor may rest on cell `i`: not blank, not upcoming */
+    grid_picker.prototype.selectable = function (i) {
+      const entry = this.entries[i]
+      return !!entry && !entry.upcoming
+    }
+    grid_picker.prototype.cell_class = function (i) {
+      const entry = this.entries[i]
+      return !entry ? 'cell blank' : entry.upcoming ? 'cell upcoming' : 'cell'
     }
     grid_picker.prototype.paint = function (p, on) {
       const cell = this.cells[this.cursor[p]]
@@ -1642,7 +1692,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
       }
     }
     grid_picker.prototype.set_cursor = function (p, index) {
-      if (this.locked[p] || this.cursor[p] === index) {
+      if (this.locked[p] || this.cursor[p] === index || !this.selectable(index)) {
         return
       }
       this.paint(p, false)
@@ -1666,6 +1716,9 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
     }
     /* how many cells the stylesheet put in a row */
     grid_picker.prototype.columns = function () {
+      if (this.fixed_columns) {
+        return this.fixed_columns
+      }
       const top = this.cells[0].offsetTop
       for (let i = 1; i < this.cells.length; i++) {
         if (this.cells[i].offsetTop !== top) {
@@ -1680,17 +1733,22 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         return
       }
       let index = this.cursor[p]
-      if (dx) {
-        index = (index + dx + n) % n
+      if (dx) { // in reading order, wrapping around and over the blank cells
+        for (let step = 0; step < n; step++) {
+          index = (index + dx + n) % n
+          if (this.selectable(index)) {
+            break
+          }
+        }
       }
-      if (dy) {
+      if (dy) { // within the column, wrapping around
         const columns = this.columns()
         const rows = Math.ceil(n / columns)
         const column = index % columns
         let row = Math.floor(index / columns)
-        for (let step = 0; step < rows; step++) { // skip the gap of a short last row
+        for (let step = 0; step < rows; step++) { // skip a short last row and the blank cells
           row = (row + dy + rows) % rows
-          if (row * columns + column < n) {
+          if (row * columns + column < n && this.selectable(row * columns + column)) {
             break
           }
         }

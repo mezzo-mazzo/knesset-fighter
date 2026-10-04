@@ -161,6 +161,49 @@ html, body
 {
 	display:block;
 }
+/* a slot of the selection grid with nothing in it: keeps its place, is not
+   selectable (the picker skips it) and does not react to the pointer */
+.grid .cell.blank
+{
+	opacity:0.3;
+	cursor:default;
+	pointer-events:none;
+}
+.grid .cell.blank .mark
+{
+	display:none;
+}
+/* an upcoming character: its portrait grayed out, labelled `soon` instead of
+   its name. not selectable (the picker skips it), does not react to the pointer */
+.grid .cell.upcoming
+{
+	cursor:default;
+	pointer-events:none;
+	position:relative;
+}
+.grid .cell.upcoming .cell_portrait
+{
+	opacity:0.75;
+	filter:grayscale(1) brightness(0.7);
+}
+.grid .cell.upcoming .mark
+{
+	display:none;
+}
+.grid .cell.upcoming .cell_label
+{
+	display:flex;
+	justify-content:center;
+	align-items:baseline;
+	gap:0.4em;
+	color:#8d98b3;
+	opacity:0.85;
+}
+.grid .cell.upcoming .cell_label .label,
+.grid .cell.upcoming .cell_label .label_local
+{
+	font-size:0.8em;
+}
 /* ---] */
 
 /* [--- device specific UI */
