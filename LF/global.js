@@ -238,7 +238,7 @@ define(['LF/util'], function (util) {
   GC.combo.timeout = 10 // how many TUs a combo will still be effective after being fired
 
   GC.unspecified = -842150451 // 0xCDCDCDCD, one kind of HEX label
-  GC.specialattack_projectiles = [201, 202] // Special attacks that shoot projectiles. Used to apply physics
+  GC.specialattack_projectiles = [201, 202, 222] // 222: Ben-Gvir's bullet (Rudolf's shuriken copy). Special attacks that shoot projectiles. Used to apply physics
 
   return G
 })

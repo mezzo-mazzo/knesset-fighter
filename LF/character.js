@@ -170,7 +170,9 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
               default:
                 // here is where D>A, D>J... etc handled
                 if (K == 'DJA' && $.transform_character && $.transform_character.is_rudolf_transform) {
-                  $.id_update('revert_transform')
+                  // revert through the default handler: a character with its own id_update (Rudolf's moveset, i.e.
+                  // Rudolf 5 / Ben-Gvir 16, or Deep, Louis...) has no 'revert_transform' case and could never revert
+                  id_updates.default.call($, 'revert_transform')
                 }
                 var tag = Global.combo_tag[K]
                 if (tag && $.frame.D[tag]) {
@@ -1222,7 +1224,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
             $.match.transform_panel($.uid)
             $.match.create_transform_character({
               name: 'transform',
-              id: 5,
+              id: $.transform_character.from_id || 5, // back to whoever transformed (Rudolf 5, Ben-Gvir 16)
               controller: $.con,
               team: $.team,
               pos: { x: $.ps.x, y: $.ps.y, z: $.ps.z },
@@ -1279,14 +1281,18 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
                 id:  $.catching.id, // create_characters
                 uid: $.catching.uid, // panel
                 opoint: { // smoke; 2x port: x 41->82, y 70->140
-                  kind: 1, x: 82, y: 140, action: 70, dvx: 0, dvy: 0, oid: 204, facing: 0
+                  kind: 1, x: 82, y: 140, action: 70, dvx: 0, dvy: 0, oid: $.data.frame[238].opoint.oid, facing: 0 // the own transform smoke (Rudolf 204, Ben-Gvir 223)
                 },
                 is_rudolf_transform: true,
+                from_id: $.id,
               }
             }
             if (!$.transform_character) {
               break
             }
+            // no one caught: transform again into the last character. revert_transform cleared the flag on the record
+            // handed back to Rudolf, so without this the second transform could never revert
+            $.transform_character.is_rudolf_transform = true
             $.match.transform_panel($.uid, $.transform_character.uid)
             $.match.create_transform_character({
               name: 'transform',
@@ -1360,6 +1366,7 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         }
       }
     }
+    id_updates[16] = id_updates[5] // Ben-Gvir: Rudolf's moveset (transform, disappear, jump sword)
 
     const states_switch_dir = // whether to allow switch dir in each state
     {
