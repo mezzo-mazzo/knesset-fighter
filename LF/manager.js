@@ -56,6 +56,42 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         const is_mobile = !!Fsupport.mobile
         root.classList.add(is_mobile ? 'mobile' : 'desktop')
 
+        // fullscreen toggle for mobile: fullscreen is the only way to get rid
+        // of the address bar. browsers without the fullscreen API for pages
+        // (iPhone Safari) never show the button.
+        const doc = document.documentElement
+        const request_fullscreen = doc.requestFullscreen || doc.webkitRequestFullscreen
+        if (is_mobile && request_fullscreen) {
+          const fullscreen_element = function () {
+            return document.fullscreenElement || document.webkitFullscreenElement
+          }
+          const toggle_fullscreen = function () {
+            if (fullscreen_element()) {
+              (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+            } else {
+              const promise = request_fullscreen.call(doc)
+              if (promise && promise.catch) {
+                promise.catch(function () { }) // refused, e.g. not a user gesture
+              }
+            }
+          }
+          const sync_fullscreen = function () {
+            root.classList.toggle('fullscreen', !!fullscreen_element())
+          }
+          document.addEventListener('fullscreenchange', sync_fullscreen)
+          document.addEventListener('webkitfullscreenchange', sync_fullscreen)
+          const button = util.div('fullscreen_button')
+          button.hidden = false
+          // during a match the touch gamepad cancels touches, which kills the
+          // click, so the tap is taken on touchend; preventDefault there stops
+          // the click that would otherwise toggle a second time
+          button.addEventListener('touchend', function (e) {
+            e.preventDefault()
+            toggle_fullscreen()
+          })
+          button.addEventListener('click', toggle_fullscreen)
+        }
+
         // window sizing. the window always behaves like a fullscreen window,
         // i.e. it is scaled to fit whatever space the browser gives us.
         window_state =
@@ -95,7 +131,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             [
               {
                 type: 'keyboard',
-                config: { up: 'w', down: 'x', left: 'a', right: 'd', def: 'z', jump: 'q', att: 's' }
+                config: { up: 'up', down: 'down', left: 'left', right: 'right', def: 'shift', jump: 'space', att: 'x' }
               },
               {
                 /* player 2 does not exist until the player sets a controller up in

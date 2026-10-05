@@ -246,6 +246,40 @@ html, body
 	vertical-align:middle;
 	text-align:center;
 }
+/* fixed to the browser window, not the scaled container, so it stays the
+   same size in the top left corner whatever the game scale is */
+.fullscreen_button
+{
+	position:fixed;
+	left:8px; top:8px;
+	width:40px; height:40px;
+	z-index:10;
+	box-sizing:border-box;
+	padding:8px;
+	border:2px solid rgba(170, 255, 255, 0.5);
+	border-radius:6px;
+	background:rgba(0, 0, 0, 0.35);
+	opacity:0.6;
+	cursor:pointer;
+	touch-action:manipulation;
+}
+.fullscreen_button[hidden]
+{
+	display:none;
+}
+.fullscreen_button svg
+{
+	display:block;
+	width:100%; height:100%;
+	fill:none;
+	stroke:#FFF;
+	stroke-width:2.5;
+}
+.LFroot.fullscreen .fullscreen_button .enter,
+.LFroot:not(.fullscreen) .fullscreen_button .leave
+{
+	display:none;
+}
 /* ---] */
 
 /* [--- menus. the items are plain HTML, the package stylesheet gives them their

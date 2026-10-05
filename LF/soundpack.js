@@ -71,12 +71,32 @@ define(['core/effects-pool'], function (Feffects) {
         source.src = src[I]
         audio.appendChild(source)
       }
-      audio.autoplay = true
+      let supported = false
       audio.addEventListener('play', function onplay() {
         audio.removeEventListener('play', onplay, true)
         audio.pause()
+        supported = true
+        unlisten()
         callback({ autoplay: true })
       }, true)
+      /* browsers block audio until the user interacts with the page, so if
+         playing now is refused, try again on the first key press, click or touch */
+      const gestures = ['keydown', 'mousedown', 'pointerdown', 'touchstart']
+      const unlock = function () {
+        if (!supported) {
+          const p = audio.play()
+          if (p && p.catch) { p.catch(function () { }) }
+        }
+      }
+      const unlisten = function () {
+        for (let i = 0; i < gestures.length; i++) {
+          window.removeEventListener(gestures[i], unlock, true)
+        }
+      }
+      for (let i = 0; i < gestures.length; i++) {
+        window.addEventListener(gestures[i], unlock, true)
+      }
+      unlock()
     } catch (e) {
     }
   }
@@ -115,8 +135,14 @@ define(['core/effects-pool'], function (Feffects) {
       if (this.audio.readyState >= 4) {
         this.audio.currentTime = this.current.start
         if (this.audio.currentTime === this.current.start) {
-          this.audio.play()
+          const This = this
+          const p = this.audio.play()
           this.dead = false
+          if (p && p.catch) {
+            p.catch(function () { // refused before the user interacted with the page
+              if (!This.dead) { This.parent.die(This) }
+            })
+          }
           return
         }
       }

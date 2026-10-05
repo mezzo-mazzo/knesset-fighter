@@ -244,6 +244,7 @@ define(function () {
       } else {
         switch (A) {
           case 'ctrl': code = 17; break
+          case 'shift': code = 16; break
           case 'up': code = 38; break // arrow keys
           case 'down': code = 40; break
           case 'left': code = 37; break
@@ -278,6 +279,7 @@ define(function () {
       } else {
         let nam = code
         switch (code) {
+          case 16: nam = 'shift'; break
           case 38: nam = 'up'; break
           case 40: nam = 'down'; break
           case 37: nam = 'left'; break
