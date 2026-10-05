@@ -14,10 +14,10 @@
 \*/
 define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/touchcontroller', 'third_party/random',
   'core/util', 'LF/sprite-select', 'core/sprite-dom', 'core/controller', 'core/resourcemap', 'core/support',
-  'LF/webrtc', 'third_party/qrcode'],
+  'LF/webrtc', 'third_party/qrcode', 'LF/analytics'],
   function (global, network, Soundpack, Match, util, Touchcontroller, Random,
     Futil, Fsprite, Fsprite_dom, Fcontroller, Fresourcemap, Fsupport,
-    webrtc, qrcode) {
+    webrtc, qrcode, analytics) {
     function Manager(pack, buildinfo) {
       const param = util.location_parameters()
 
@@ -638,6 +638,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             util.div('network_copy').onclick = function () {
               const button = this
               const link = util.div('network_link')
+              analytics.invite_shared('copy')
               link.select()
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(link.value).then(copied, copy_selection)
@@ -656,6 +657,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               }
             }
             util.div('network_share').onclick = function () {
+              analytics.invite_shared('share')
               navigator.share({ title: document.title, url: util.div('network_link').value })
                 .catch(function () { }) // the player closed the share sheet
             }
@@ -695,12 +697,13 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             util.div('network_link').value = link || ''
             util.div('network_share').hidden = !navigator.share
           },
-          open_peer: function () {
+          open_peer: function (role) {
             const This = this
             this.close()
             const peer = this.peer = new webrtc.Peer()
             peer.onfail = function () {
               if (peer === This.peer) {
+                analytics.network_failed(role)
                 This.status('Could not connect. Please try again.', 'החיבור נכשל. נסו שוב.')
               }
             }
@@ -727,7 +730,8 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               return
             }
             this.status('Preparing the invitation...', 'מכין הזמנה...')
-            const peer = this.open_peer()
+            analytics.network_invite(as_qr)
+            const peer = this.open_peer('active')
             peer.onopen = function () { This.start(peer, 'active') }
             peer.invite().then(function (link) {
               if (peer !== This.peer) {
@@ -790,7 +794,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             this.show_link(null)
             this.status('Preparing your reply...', 'מכין תשובה...')
             manager.switch_UI('network_game')
-            const peer = this.open_peer()
+            const peer = this.open_peer('passive')
             peer.onopen = function () { This.start(peer, 'passive') }
             peer.join(offer).then(function (link) {
               if (peer !== This.peer || session.network) {
@@ -832,6 +836,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
               this.listener = null
             }
             this.status('Connected!', 'מחובר!')
+            analytics.network_connected(role)
             create_network_controllers({ transport: peer }, { role: role, per_peer: 1 })
           },
           /* leave the network game: start over on a clean front page */
@@ -1055,9 +1060,12 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           confirm: function () {
             flow.arena = this.picker.cursor_entry(0).arena
             manager.sound.play('1/m_ok')
+            const report = flow_report()
+            analytics.match_started(report)
             manager.start_match({
               players: flow_players(),
-              options: { background: flow.arena, difficulty: flow.difficulty }
+              options: { background: flow.arena, difficulty: flow.difficulty },
+              report: report
             })
           },
           frame: function () {
@@ -1271,7 +1279,8 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
             set: {
               weapon: true,
               demo_mode: config.demo_mode
-            }
+            },
+            report: config.report
           })
         return match
 
@@ -1546,6 +1555,36 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           return 0 // independent: a match gives every one of them its own team
         }
         return i === 0 ? 1 : 2 // the player against the rest
+      }
+      /*\
+       * what the analytics events say about the match the flow is starting.
+       * `local` is the index of the one human playing on this screen, or null
+       * when several share it (local PvP), where no single result applies.
+      \*/
+      function flow_report() {
+        const fighters = []
+        for (let i = 0; i < flow.picks.length; i++) {
+          fighters.push(char_list[flow.picks[i].character].name)
+        }
+        let local = 0
+        if (session.network) {
+          local = session.control.my_offset
+        } else if (flow.mode === 'pvp') {
+          local = null
+        }
+        const difficulty = ['easy', 'normal', 'difficult']
+        return {
+          mode: flow.mode,
+          difficulty: flow.mode === 'pvp' ? null : difficulty[flow.difficulty],
+          bots: flow.mode === 'pvp' ? 0 : flow.picks.length - 1,
+          arena: flow.arena === -1 ? 'random' : bg_list[flow.arena].name,
+          network: !!session.network,
+          humans: flow.mode === 'pvp' ? flow.picks.length : 1,
+          fighters: fighters,
+          local: local,
+          character: local === null ? null : fighters[local],
+          opponents: local === null ? fighters : fighters.filter(function (f, i) { return i !== local })
+        }
       }
 
       // ---]

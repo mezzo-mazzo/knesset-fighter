@@ -12,8 +12,8 @@
 
     requirejs([
         'core/support', 'LF/loader!' + flf_config.package, 'LF/manager',
-        'LF/util', 'game/buildinfo.js', 'core/css!LF/application.css'
-    ], function (Fsupport, package, Manager, util, buildinfo) {
+        'LF/util', 'game/buildinfo.js', 'LF/analytics', 'core/css!LF/application.css'
+    ], function (Fsupport, package, Manager, util, buildinfo, analytics) {
 
         if (typeof (console) === 'undefined') {
             console = {};
@@ -38,6 +38,8 @@
                 y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
             })(window, document, "clarity", "script", "7e9t7td3ig");
         }
+
+        analytics.init({ version: buildinfo.version, device: Fsupport.mobile ? 'mobile' : 'desktop' });
 
         // util.div('window_caption_title').innerHTML = buildinfo.version;
 

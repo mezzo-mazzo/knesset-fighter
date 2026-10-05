@@ -6,10 +6,10 @@
 
 define(['core/util', 'core/controller', 'LF/sprite-select',
   'LF/network', 'LF/factories', 'LF/scene', 'LF/background', 'LF/AI', 'third_party/random', 'LF/util',
-  'LF/global'],
+  'LF/global', 'LF/analytics'],
   function (Futil, Fcontroller, Fsprite,
     network, factory, Scene, Background, AI, Random, util,
-    Global) {
+    Global, analytics) {
     const GA = Global.application
     /*\
      * match
@@ -51,6 +51,8 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
       if (!setting.set) { setting.set = {} }
 
       $.gameover_state = false
+      $.report = setting.report // what analytics says of this match, none in demo mode
+      $.reported_end = false
       $.randomseed = $.new_randomseed()
       $.create_scenegraph()
       $.control = $.create_controller(setting.control)
@@ -630,9 +632,47 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         $.manager.summary.set_time(new Date(dur * 1000).toISOString().substr(14, 5))
         $.manager.summary.show()
         $.manager.sound.play('1/m_end')
+        $.report_finished(dur)
       } else {
         $.manager.summary.hide()
       }
+    }
+
+    /*\
+     * report the summary once per match: the local player's result, the
+     * characters of the winning team and the local player's summary line
+    \*/
+    match.prototype.report_finished = function (seconds) {
+      const $ = this
+      if (!$.report || $.reported_end) {
+        return
+      }
+      $.reported_end = true
+      const teams = {}
+      for (let i = 0; i < $.panel.length; i++) {
+        if ($.panel[i].uid !== undefined) {
+          const ch = $.character[$.panel[i].uid]
+          if (ch.health.hp > 0) {
+            teams[ch.team] = true
+          }
+        }
+      }
+      const winners = []
+      let result = null
+      let stat = null
+      for (let i = 0; i < $.panel.length; i++) {
+        if ($.panel[i].uid !== undefined) {
+          const ch = $.character[$.panel[i].uid]
+          if (teams[ch.team]) {
+            winners.push($.report.fighters[i])
+          }
+          if (i === $.report.local) {
+            result = teams[ch.team] ? 'win' : 'lose'
+            stat = { kill: ch.stat.kill, attack: ch.stat.attack, hp_lost: ch.health.hp_lost }
+          }
+        }
+      }
+      analytics.match_finished($.report, { result: result, winners: winners, seconds: seconds, stat: stat })
     }
 
     match.prototype.key = function (K, down) {
@@ -714,6 +754,10 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
 
     match.prototype.F4 = function () {
       const $ = this
+      if ($.report && !$.reported_end) {
+        $.reported_end = true
+        analytics.match_quit($.report, $.time.t / Global.gameplay.framerate)
+      }
       $.destroy()
       $.manager.match_end()
     }
