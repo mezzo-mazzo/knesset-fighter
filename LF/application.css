@@ -247,11 +247,12 @@ html, body
 	text-align:center;
 }
 /* fixed to the browser window, not the scaled container, so it stays the
-   same size in the top left corner whatever the game scale is */
+   same size whatever the game scale is. top right, because the touch
+   function keys (F1..F7) take the top left corner */
 .fullscreen_button
 {
 	position:fixed;
-	left:8px; top:8px;
+	right:8px; top:8px;
 	width:40px; height:40px;
 	z-index:10;
 	box-sizing:border-box;
