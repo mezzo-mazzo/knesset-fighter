@@ -134,6 +134,11 @@ define(function () {
     this.capture('network_failed', { role: role })
   }
 
+  /* free text from the feedback dialog. the caller rate limits it */
+  Analytics.prototype.feedback = function (text) {
+    this.capture('feedback', { text: String(text).slice(0, 2000) })
+  }
+
   Analytics.prototype.capture = function (name, props) {
     if (!this.started) {
       return

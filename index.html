@@ -44,6 +44,14 @@
 						<div class='label'>Network Game</div>
 						<div class='label_local'>משחק ברשת</div>
 					</li>
+					<li class='menu_item' data-action='movelist'>
+						<div class='label'>Movelist</div>
+						<div class='label_local'>רשימת מהלכים</div>
+					</li>
+					<li class='menu_item' data-action='feedback'>
+						<div class='label'>Feedback</div>
+						<div class='label_local'>משוב</div>
+					</li>
 					<li class='menu_item desktop_only' data-action='settings'>
 						<div class='label'>Control Settings</div>
 						<div class='label_local'>הגדרות שלטים</div>
@@ -362,6 +370,57 @@
 				</div>
 			</div>
 
+			<div class='screen movelist'>
+				<div class='select_title'>
+					<span class='title_movelist'>
+						<span class='label'>Movelist: choose a fighter</span>
+						<span class='label_local'>רשימת מהלכים: בחר דמות</span>
+					</span>
+				</div>
+				<div class='select_stage'>
+					<div class='grid character_grid movelist_grid'>
+						<template class='cell_template'>
+							<div class='cell'>
+								<div class='cell_portrait'><span class='mark'>?</span></div>
+								<span class='cell_label'></span>
+							</div>
+						</template>
+					</div>
+				</div>
+				<div class='select_hint'>
+					<div class='menu_item back_item' data-action='back'>
+						<div class='label'>Back (Esc)</div>
+						<div class='label_local'>חזרה</div>
+					</div>
+				</div>
+			</div>
+
+			<div class='modal feedback_modal' hidden>
+				<div class='modal_box'>
+					<div class='modal_title'>
+						<span class='label'>Feedback</span>
+						<span class='label_local'>משוב</span>
+					</div>
+					<textarea class='feedback_text' maxlength='2000' placeholder='Ask for a new character&#10;Make a suggestion&#10;Tell the dev that he sucks and you hate him and his entire family'></textarea>
+					<div class='feedback_thanks' hidden>
+						<span class='label'>Thanks!</span>
+						<span class='label_local'>תודה!</span>
+					</div>
+					<div class='modal_buttons'>
+						<button class='modal_button feedback_send'><span class='label'>Send</span><span class='label_local'>שלח</span></button>
+						<button class='modal_button feedback_cancel'><span class='label'>Cancel</span><span class='label_local'>ביטול</span></button>
+					</div>
+				</div>
+			</div>
+
+			<div class='modal movelist_modal' hidden>
+				<div class='modal_box'>
+					<button class='modal_close' aria-label='Close'>&times;</button>
+					<div class='modal_title movelist_name'></div>
+					<div class='movelist_content'></div>
+				</div>
+			</div>
+
 			<div class='screen gameplay'>
 				<canvas class='canvas' width='0' height='0'></canvas>
 				<div class='top_status'>
@@ -517,6 +576,8 @@
 		<svg class='enter' viewBox='0 0 24 24'><path d='M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6'/></svg>
 		<svg class='leave' viewBox='0 0 24 24'><path d='M9 3v6H3M21 9h-6V3M15 21v-6h6M3 15h6v6'/></svg>
 	</div>
+	<!-- main menu only, top right below the fullscreen button -->
+	<a class='bibi_button' href='https://mezzo-mazzo.github.io/bibi-bird/' target='_blank' rel='noopener' title='Bibi Bird' aria-label='Bibi Bird'><img src='assets/bibi-bird.png' alt='Bibi Bird'></a>
 
 </div>
 <pre id='flf-config' style='display:none'>

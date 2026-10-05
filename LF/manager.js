@@ -239,6 +239,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         bg_list[-1] = { name: 'Random' }
 
         this.create_UI()
+        this.feedback.create()
         const offer = webrtc.read('offer', window.location.hash)
         const answer = webrtc.read('answer', window.location.hash)
         // a link pasted into a tab already running the game only changes the hash
@@ -397,6 +398,73 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           param: param
         }, handler)
       }
+      /*\
+       * the feedback dialog of the front page. the text goes out as the
+       * analytics event `feedback`, at most FEEDBACK_LIMIT times per calendar
+       * year per browser (counted in localStorage as { year, count }). past the
+       * limit the dialog behaves the same, only nothing is sent.
+      \*/
+      const FEEDBACK_KEY = 'F.LF/feedback'
+      const FEEDBACK_LIMIT = 3
+      this.feedback =
+      {
+        /* how many were sent this calendar year (the count resets with the year) */
+        sent: function () {
+          const year = new Date().getFullYear()
+          try {
+            const obj = JSON.parse(Fsupport.localStorage.getItem(FEEDBACK_KEY))
+            if (obj && obj.year === year && obj.count > 0) {
+              return obj.count
+            }
+          } catch (e) { /* no storage or garbage in it: counts as none */ }
+          return 0
+        },
+        /* returns true if the text was actually reported */
+        submit: function (text) {
+          const count = this.sent()
+          if (count >= FEEDBACK_LIMIT) {
+            return false
+          }
+          try {
+            Fsupport.localStorage.setItem(FEEDBACK_KEY,
+              JSON.stringify({ year: new Date().getFullYear(), count: count + 1 }))
+          } catch (e) { /* storage disabled: the event is sent anyway */ }
+          analytics.feedback(text)
+          return true
+        },
+        open: function () {
+          util.div('feedback_text').value = ''
+          util.div('feedback_modal').hidden = false
+          util.div('feedback_thanks').hidden = true
+          util.div('feedback_text').hidden = false
+          util.div('modal_buttons').hidden = false
+          util.div('feedback_text').focus()
+        },
+        close: function () {
+          util.div('feedback_modal').hidden = true
+        },
+        send: function () {
+          const text = util.div('feedback_text').value.trim()
+          if (!text) {
+            util.div('feedback_text').focus() // nothing to send
+            return
+          }
+          this.submit(text)
+          const This = this
+          util.div('feedback_text').hidden = true
+          util.div('modal_buttons').hidden = true
+          util.div('feedback_thanks').hidden = false
+          setTimeout(function () { This.close() }, 1200)
+        },
+        create: function () {
+          const This = this
+          util.div('feedback_send').onclick = function () { This.send() }
+          util.div('feedback_cancel').onclick = function () { This.close() }
+          util.div('feedback_text').addEventListener('keydown', function (e) {
+            if (e.keyCode === 27) { This.close() }
+          })
+        }
+      }
       this.UI_list =
       {
         frontpage:
@@ -419,8 +487,80 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                 }
               } else if (action === 'settings') {
                 manager.switch_UI('settings')
+              } else if (action === 'feedback') {
+                manager.sound.play('1/m_ok')
+                manager.feedback.open()
+              } else if (action === 'movelist') {
+                manager.sound.play('1/m_ok')
+                manager.switch_UI('movelist')
               }
             })
+          }
+        },
+        movelist:
+        {
+          create: function () {
+            const This = this
+            const entries = []
+            for (let i = 0; i < char_list.length; i++) {
+              entries.push({ character: i, name: char_list[i].name, pic: img_list[i] })
+            }
+            this.picker = new grid_picker(util.div('movelist_grid'))
+            this.picker.build(entries, { columns: Math.min(entries.length, 4) })
+            this.picker.onclick_cell = function (index) {
+              manager.sound.play('1/m_ok')
+              This.show(entries[index].character)
+            }
+            menu_onclick(util.div('movelist'), function (action) {
+              if (action === 'back') {
+                This.leave()
+              }
+            })
+            const modal = util.div('movelist_modal')
+            util.div('modal_close').onclick = function () {
+              This.close()
+            }
+            modal.addEventListener('click', function (e) {
+              if (e.target === modal) { This.close() } // the dim area around the box
+            })
+            document.addEventListener('keydown', function (e) {
+              if (e.keyCode === 27 && manager.active_UI === 'movelist') {
+                if (modal.hidden) { This.leave() } else { This.close() }
+              }
+            })
+          },
+          onactive: function () {
+            this.picker.layout()
+            this.picker.reset_cursors(0)
+          },
+          leave: function () {
+            manager.sound.play('1/m_cancel')
+            manager.switch_UI('frontpage')
+          },
+          close: function () {
+            util.div('movelist_modal').hidden = true
+          },
+          /* open the modal with the moves of `character` (an index of `char_list`) */
+          show: function (character) {
+            const O = char_list[character]
+            const modal = util.div('movelist_modal')
+            util.div('movelist_name').textContent = O.name
+            const content = util.div('movelist_content')
+            content.textContent = ''
+            modal.hidden = false
+            function render() {
+              content.innerHTML = movelist_html(O.data)
+            }
+            if (O.data && O.data !== 'lazy') {
+              render()
+            } else {
+              content.textContent = '...'
+              pack.data.load({ object: [O.id] }, function () {
+                if (!modal.hidden && util.div('movelist_name').textContent === O.name) {
+                  render()
+                }
+              })
+            }
           }
         },
         arcade_menu:
@@ -1229,10 +1369,9 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
         }
         classes.add('state-' + page)
         const allow_wide = !!this.UI_list[page].allow_wide
-        if (window_state.allow_wide !== allow_wide) {
-          window_state.allow_wide = allow_wide
-          resizer()
-        }
+        window_state.allow_wide = allow_wide
+        // always refit: the main menu on mobile resizes the window to the viewport
+        resizer()
         this.dispatch_event('onactive')
       }
       /*\
@@ -1640,6 +1779,80 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
       } else {
         el.classList.add('empty')
       }
+    }
+    /*\
+     * the move list of a character, as HTML. the special moves are the frames
+     * a standing/walking/... frame jumps to on a key combination (`hit_Fa`,
+     * `hit_Dj`, ...): the frame that is jumped to names the move. the same move
+     * is often reachable from several frames (standing, walking, defend), so
+     * moves are deduped on input and frame name. D is the defend key.
+    \*/
+    const MOVE_INPUTS = [
+      ['hit_Fa', 'D → A'], ['hit_Fj', 'D → J'],
+      ['hit_Ua', 'D ↑ A'], ['hit_Uj', 'D ↑ J'],
+      ['hit_Da', 'D ↓ A'], ['hit_Dj', 'D ↓ J'],
+      ['hit_ja', 'D + J + A']
+    ]
+    const MOVE_NAMES_MAP = {
+        'ball1': 'Energy ball',
+        'singlong': 'Dragon punch',
+        'jumphit': 'Volley spike',
+        'many punch': 'Combo punch',
+
+        'blastpush': 'Force push',
+        '1000foot': 'Rolling kicks',
+        'r-catch': 'זרוק אותם לים',
+
+        'eizenkot_ball1': 'Fireball',
+        'burn run': 'Flaming run',
+        'explosion': 'Explosion',
+        'flame': 'Katon: goukakyu no jutsu',
+
+        'c foot': 'Hurricane kick',
+        'chase ball': 'Tracking energy ball',
+        'many foot': 'Flurry kicks',
+
+        'punch': 'שוטגאן',
+        'jump sword': 'מלשינים דוקר',
+        'disappear': 'ברח מאחריות',
+        '+man': 'יס-מנים',
+        'transform': 'זאב בעור כבש'
+    };
+    function html_escape(s) {
+      return String(s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+      })
+    }
+    function special_moves(data) {
+      const moves = []
+      const seen = {}
+      if (!data || !data.frame) {
+        return moves
+      }
+      for (let t = 0; t < MOVE_INPUTS.length; t++) {
+        const tag = MOVE_INPUTS[t][0]
+        for (const k in data.frame) {
+          const target = data.frame[data.frame[k][tag]]
+          if (data.frame[k][tag] > 0 && target) {
+            const key = tag + '|' + target.name
+            if (!seen[key]) {
+              seen[key] = true
+              moves.push({ input: MOVE_INPUTS[t][1], name: String(target.name).replace(/[_]/g, ' ') })
+            }
+          }
+        }
+      }
+      return moves
+    }
+    function movelist_html(data) {
+        const special = special_moves(data)
+        const characterName = data.bmp.name.toLowerCase();
+        return `<h3><span class='label'>Special moves</span><span class='label_local'>מהלכים מיוחדים</span></h3>
+<div class='note'>D = defend, A = attack, J = jump</div><table class='moves'>${special.map(move => {
+            const moveName = move.name;
+            return "<tr><td class='input'>" + html_escape(move.input) + "</td><td>" +
+                html_escape(MOVE_NAMES_MAP[`${characterName}_${moveName}`] || MOVE_NAMES_MAP[moveName] || moveName) + '</td></tr>'
+        }).join('')}</table>`;
     }
     function set_preview(panel, state) {
       fill_portrait(panel.getElementsByClassName('preview_portrait')[0], state)

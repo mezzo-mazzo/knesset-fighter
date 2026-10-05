@@ -16,6 +16,8 @@ define(function () {
   master_controller.child = []
   master_controller.key = function (e, down) {
     if (!e) e = window.event
+    // typing in a text box (the feedback dialog) is not game input
+    if (e.target && e.target.tagName === 'TEXTAREA') return
     for (const I in this.child) {
       if (this.child[I].key(e.keyCode, down)) { break }// if one controller catches a key, the next controller will never receive an event
     }
