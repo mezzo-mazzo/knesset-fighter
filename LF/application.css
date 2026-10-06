@@ -241,25 +241,29 @@ html, body
 	opacity:0.5;
 	transition:left 0.5s;
 }
-.touch_joy_base
+.touch_joy_zone
 {
-	position:absolute;
-	display:none;
-	box-sizing:border-box;
-	border:2px solid rgba(170, 255, 255, 0.5);
-	border-radius:50%;
-	background:rgba(255, 255, 255, 0.12);
-	pointer-events:none;
+	position:fixed;
+	left:0px; top:0px;
+	width:50vw; height:100vh;
+	touch-action:none;
+	visibility:hidden;
 }
-.touch_joy_knob
+.touch_controller_button
 {
-	position:absolute;
-	left:50%; top:50%;
-	width:44%; height:44%;
-	margin:-22% 0 0 -22%;
-	border-radius:50%;
-	background:rgba(255, 255, 255, 0.45);
-	border:2px solid rgba(170, 255, 255, 0.7);
+	z-index:1;
+}
+/* nipplejs paints inline styles, hence the !important: a light ring and a knob that stay clearly visible when idle */
+.touch_joy_zone .back
+{
+	background:rgba(255, 255, 255, 0.18) !important;
+	border:3px solid rgba(255, 255, 255, 0.85) !important;
+	box-sizing:border-box;
+}
+.touch_joy_zone .front
+{
+	background:rgba(255, 255, 255, 0.6) !important;
+	border:2px solid rgba(170, 255, 255, 0.9) !important;
 	box-sizing:border-box;
 }
 .touch_controller_button > span

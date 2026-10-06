@@ -3,7 +3,7 @@
  *
  * touch controller for LF2
 \*/
-define(['LF/util'], function (util) {
+define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   const controllers = []
   const SVG = '<svg class="touch_icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">'
   const ICON = {
@@ -23,10 +23,6 @@ define(['LF/util'], function (util) {
     for (const i in controllers) {
       if (!controllers[i].sync) {
         controllers[i].fetch()
-      }
-      // the joystick is event driven and tracks its own touch
-      if (controllers[i].joy) {
-        controllers[i].joystick(event)
       }
     }
     if (TC.preventDefault) {
@@ -68,14 +64,18 @@ define(['LF/util'], function (util) {
       }
     }
     if ($.config.layout === 'gamepad') {
-      // floating joystick: spawns under the finger on the left half of the screen
-      const base = document.createElement('div')
-      base.className = 'touch_joy_base'
-      const knob = document.createElement('div')
-      knob.className = 'touch_joy_knob'
-      base.appendChild(knob)
-      util.div('touch_control_holder').appendChild(base)
-      $.joy = { id: null, x: 0, y: 0, r: 60, base: base, knob: knob }
+      // the zone nipplejs listens on: the left half of the screen, under the buttons
+      const zone = document.createElement('div')
+      zone.className = 'touch_joy_zone'
+      util.div('touch_control_holder').appendChild(zone)
+      zone.addEventListener('click', function (e) {
+        // the zone covers menu items: pass a tap through to what is below it
+        zone.style.pointerEvents = 'none'
+        const el = document.elementFromPoint(e.clientX, e.clientY)
+        zone.style.pointerEvents = ''
+        if (el && el.click) { el.click() }
+      })
+      $.joy = { zone: zone, nipple: null, r: 60 }
     }
     if ($.joy) {
       // new children (a match boundary) never saw the held directions: let go first
@@ -103,10 +103,8 @@ define(['LF/util'], function (util) {
   TC.preventDefault = false
   TC.enable = function (en) {
     TC.enabled = en
-    if (!en) {
-      for (let i = 0; i < controllers.length; i++) {
-        if (controllers[i].joy) { controllers[i].joystick_release() }
-      }
+    for (let i = 0; i < controllers.length; i++) {
+      if (controllers[i].joy) { controllers[i].joystick_sync() }
     }
   }
   TC.prototype.type = 'touch'
@@ -125,9 +123,8 @@ define(['LF/util'], function (util) {
       } else {
         offy = h / 5
       }
-      $.joystick_release()
       $.joy.r = Math.max(40, Math.min(w, window.innerHeight) * 0.13)
-      $.joy.base.style.width = $.joy.base.style.height = ($.joy.r * 2) + 'px'
+      $.joystick_build()
       sizeB *= h
       sizeC *= h
       this.set_button_pos({
@@ -201,16 +198,17 @@ define(['LF/util'], function (util) {
   }
   TC.prototype.hide = function () {
     const $ = this
-    if ($.joy) { $.joystick_release() }
     for (const i in $.button) {
       hide($.button[i])
       $.button[i].disabled = true
     }
     $.hidden = true
+    if ($.joy) { $.joystick_sync() }
   }
   TC.prototype.show = function () {
     const $ = this
     $.hidden = false
+    if ($.joy) { $.joystick_sync() }
     for (const i in $.button) {
       show($.button[i])
       $.button[i].disabled = false
@@ -235,75 +233,55 @@ define(['LF/util'], function (util) {
     }
   }
   TC.prototype.joystick_release = function () {
-    const $ = this
-    const J = $.joy
-    J.id = null
-    J.base.style.display = 'none'
-    $.joystick_set({ up: 0, down: 0, left: 0, right: 0 })
+    this.joystick_set({ up: 0, down: 0, left: 0, right: 0 })
   }
-  TC.prototype.joystick = function (event) {
+  // (re)create the nipplejs joystick, idle at the default spot bottom left.
+  // 'semi' mode: a touch near the joystick uses it in place, a touch farther
+  // than catchDistance moves it to the new touch point; after a release it
+  // stays where it was, at restOpacity.
+  TC.prototype.joystick_build = function () {
     const $ = this
     const J = $.joy
-    if ($.hidden || !TC.enabled) {
-      if (J.id !== null) { $.joystick_release() }
-      return
-    }
-    const changed = event.changedTouches
-    let T = null
-    if (event.type === 'touchstart') {
-      if (J.id !== null) { return }
-      for (let i = 0; i < changed.length; i++) {
-        const t = changed[i]
-        if (t.clientX >= window.innerWidth / 2) { continue }
-        let onbutton = false
-        for (let c = 0; c < controllers.length; c++) {
-          const btn = controllers[c].button
-          for (const key in btn) {
-            if (!btn[key].disabled && !controllers[c].hidden && point_in_rect(t.clientX, t.clientY, btn[key])) { onbutton = true }
-          }
-        }
-        if (onbutton) { continue }
-        J.id = t.identifier
-        J.x = t.clientX
-        J.y = t.clientY
-        J.base.style.left = (J.x - J.r) + 'px'
-        J.base.style.top = (J.y - J.r) + 'px'
-        J.base.style.display = 'block'
-        T = t
-        break
-      }
-      if (!T) { return }
-      if (TC.preventDefault) { event.preventDefault() }
-    } else {
-      if (J.id === null) { return }
-      for (let i = 0; i < changed.length; i++) {
-        if (changed[i].identifier === J.id) { T = changed[i] }
-      }
-      if (!T) { return }
-      if (event.type === 'touchend' || event.type === 'touchcancel' || event.type === 'touchleave') {
-        $.joystick_release()
-        return
-      }
-    }
-    // clamp the knob to the base
-    let dx = T.clientX - J.x
-    let dy = T.clientY - J.y
-    const len = Math.sqrt(dx * dx + dy * dy)
-    if (len > J.r) {
-      dx = dx / len * J.r
-      dy = dy / len * J.r
-    }
-    J.knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'
-    // deadzone, then 8-way: a direction is pressed when its axis share is large enough
-    const dead = J.r * ($.state.up || $.state.down || $.state.left || $.state.right ? 0.2 : 0.28)
+    $.joystick_release()
+    if (J.nipple) { J.nipple.destroy() }
+    J.zone.style.display = ''
+    J.nipple = nipplejs.create({
+      zone: J.zone,
+      mode: 'semi',
+      size: J.r * 2,
+      catchDistance: J.r,
+      restOpacity: 0.7,
+      fadeTime: 100,
+      color: '#ffffff'
+    })
+    J.nipple.createJoystick({ x: J.r * 1.5 + 12, y: window.innerHeight - J.r * 1.5 - 12 }).addToDom()
+    J.nipple.on('move', function (evt, data) {
+      data = data || evt.data
+      $.joystick_move(data)
+    })
+    J.nipple.on('end', function () { $.joystick_release() })
+    $.joystick_sync()
+  }
+  // visible exactly when the gamepad is shown and touch input is on
+  TC.prototype.joystick_sync = function () {
+    const $ = this
+    const on = !$.hidden && TC.enabled
+    $.joy.zone.style.visibility = on ? 'visible' : 'hidden'
+    $.joy.zone.style.pointerEvents = on ? '' : 'none'
+    if (!on) { $.joystick_release() }
+  }
+  // knob vector -> 8-way direction keys, with a deadzone and hysteresis
+  TC.prototype.joystick_move = function (data) {
+    const $ = this
+    const S = $.state
+    const dist = data.distance / $.joy.r
     const dir = { up: 0, down: 0, left: 0, right: 0 }
-    if (len > dead) {
-      const nx = dx / len
-      const ny = dy / len
+    if (dist > (S.up || S.down || S.left || S.right ? 0.2 : 0.28)) {
+      const nx = Math.cos(data.angle.radian)
+      const ny = -Math.sin(data.angle.radian)
       // 8 equal sectors (sin 22.5deg = 0.38); a held direction needs less to stay
       const on = 0.38
       const off = 0.28
-      const S = $.state
       if (nx < -(S.left ? off : on)) { dir.left = 1 } else if (nx > (S.right ? off : on)) { dir.right = 1 }
       if (ny < -(S.up ? off : on)) { dir.up = 1 } else if (ny > (S.down ? off : on)) { dir.down = 1 }
     }
@@ -326,7 +304,8 @@ define(['LF/util'], function (util) {
       let down = false
       for (var i = 0; i < touches.length; i++) {
         const T = touches[i]
-        if ($.joy && T.identifier === $.joy.id) { continue }
+        // the left half belongs to the joystick, whose finger must not press buttons
+        if ($.joy && T.clientX < window.innerWidth / 2) { continue }
         if (point_in_rect(T.clientX, T.clientY, $.button[key])) {
           down = true
           break
