@@ -68,14 +68,12 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       const zone = document.createElement('div')
       zone.className = 'touch_joy_zone'
       util.div('touch_control_holder').appendChild(zone)
-      zone.addEventListener('click', function (e) {
-        // the zone covers menu items: pass a tap through to what is below it
-        zone.style.pointerEvents = 'none'
-        const el = document.elementFromPoint(e.clientX, e.clientY)
-        zone.style.pointerEvents = ''
-        if (el && el.click) { el.click() }
-      })
-      $.joy = { zone: zone, nipple: null, r: 60 }
+      $.joy = { zone: zone, nipple: null, r: 60, w: 0, h: 0 }
+      // the zone is only shown during a match (CSS), so
+      // let go of the keys when another screen takes over
+      new MutationObserver(function () {
+        if (getComputedStyle(zone).display === 'none') { $.joystick_release() }
+      }).observe(util.root, { attributes: true, attributeFilter: ['class'] })
     }
     if ($.joy) {
       // new children (a match boundary) never saw the held directions: let go first
@@ -123,8 +121,13 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       } else {
         offy = h / 5
       }
-      $.joy.r = Math.max(40, Math.min(w, window.innerHeight) * 0.13)
-      $.joystick_build()
+      const r = Math.max(40, Math.min(w, window.innerHeight) * 0.13)
+      const J = $.joy
+      // the URL bar showing or hiding fires resize too: only rebuild on a real change
+      if (!J.nipple || r !== J.r || w !== J.w || window.innerHeight !== J.h) {
+        J.r = r
+        $.joystick_build()
+      }
       sizeB *= h
       sizeC *= h
       this.set_button_pos({
@@ -243,8 +246,23 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     const $ = this
     const J = $.joy
     $.joystick_release()
-    if (J.nipple) { J.nipple.destroy() }
-    J.zone.style.display = ''
+    // keep the last-used centre, scaled into the new viewport
+    const w = window.innerWidth
+    const h = window.innerHeight
+    let cx = J.r * 1.5 + 12
+    let cy = h - J.r * 1.5 - 12
+    if (J.nipple) {
+      const old = J.nipple.all.values().next().value
+      if (old && old.position) {
+        cx = old.position.x * w / J.w
+        cy = old.position.y * h / J.h
+      }
+      J.nipple.destroy()
+    }
+    cx = Math.min(Math.max(cx, J.r), w / 2 - J.r)
+    cy = Math.min(Math.max(cy, J.r), h - J.r)
+    J.w = w
+    J.h = h
     J.nipple = nipplejs.create({
       zone: J.zone,
       mode: 'semi',
@@ -254,7 +272,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       fadeTime: 100,
       color: '#ffffff'
     })
-    J.nipple.createJoystick({ x: J.r * 1.5 + 12, y: window.innerHeight - J.r * 1.5 - 12 }).addToDom()
+    J.nipple.createJoystick({ x: cx, y: cy }).addToDom()
     J.nipple.on('move', function (evt, data) {
       data = data || evt.data
       $.joystick_move(data)

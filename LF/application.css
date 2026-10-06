@@ -249,6 +249,10 @@ html, body
 	touch-action:none;
 	visibility:hidden;
 }
+.LFroot:not(.state-gameplay) .touch_joy_zone
+{
+	display:none;
+}
 .touch_controller_button
 {
 	z-index:1;
