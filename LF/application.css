@@ -241,6 +241,27 @@ html, body
 	opacity:0.5;
 	transition:left 0.5s;
 }
+.touch_joy_base
+{
+	position:absolute;
+	display:none;
+	box-sizing:border-box;
+	border:2px solid rgba(170, 255, 255, 0.5);
+	border-radius:50%;
+	background:rgba(255, 255, 255, 0.12);
+	pointer-events:none;
+}
+.touch_joy_knob
+{
+	position:absolute;
+	left:50%; top:50%;
+	width:44%; height:44%;
+	margin:-22% 0 0 -22%;
+	border-radius:50%;
+	background:rgba(255, 255, 255, 0.45);
+	border:2px solid rgba(170, 255, 255, 0.7);
+	box-sizing:border-box;
+}
 .touch_controller_button > span
 {
 	display:table-cell;

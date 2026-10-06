@@ -24,6 +24,10 @@ define(['LF/util'], function (util) {
       if (!controllers[i].sync) {
         controllers[i].fetch()
       }
+      // the joystick is event driven and tracks its own touch
+      if (controllers[i].joy) {
+        controllers[i].joystick(event)
+      }
     }
     if (TC.preventDefault) {
       event.preventDefault()
@@ -32,6 +36,15 @@ define(['LF/util'], function (util) {
   for (const event in { touchstart: 0, touchmove: 0, touchenter: 0, touchend: 0, touchleave: 0, touchcancel: 0 }) {
     document.addEventListener(event, touch_fun, false)
   }
+  function release_all() {
+    for (let i = 0; i < controllers.length; i++) {
+      if (controllers[i].joy) { controllers[i].joystick_release() }
+    }
+  }
+  window.addEventListener('blur', release_all, false)
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { release_all() }
+  }, false)
   window.addEventListener('resize', function () {
     for (let i = 0; i < controllers.length; i++) {
       controllers[i].resize()
@@ -44,10 +57,6 @@ define(['LF/util'], function (util) {
     if ($.config.layout === 'gamepad') {
       $.state = { up: 0, down: 0, left: 0, right: 0, def: 0, jump: 0, att: 0 }
       $.button = {
-        up: { label: '&uarr;' },
-        down: { label: '&darr;' },
-        left: { label: '&larr;' },
-        right: { label: '&rarr;' },
         def: { label: ICON.def },
         jump: { label: ICON.jump },
         att: { label: ICON.att }
@@ -57,6 +66,25 @@ define(['LF/util'], function (util) {
       $.button = {
         F1: { label: 'F1' }, F2: { label: 'F2' }, F4: { label: 'F4' }, F7: { label: 'F7' }
       }
+    }
+    if ($.config.layout === 'gamepad') {
+      // floating joystick: spawns under the finger on the left half of the screen
+      const base = document.createElement('div')
+      base.className = 'touch_joy_base'
+      const knob = document.createElement('div')
+      knob.className = 'touch_joy_knob'
+      base.appendChild(knob)
+      util.div('touch_control_holder').appendChild(base)
+      $.joy = { id: null, x: 0, y: 0, r: 60, base: base, knob: knob }
+    }
+    if ($.joy) {
+      // new children (a match boundary) never saw the held directions: let go first
+      let child = []
+      Object.defineProperty($, 'child', {
+        get: function () { return child },
+        set: function (c) { $.joystick_release(); child = c },
+        enumerable: true
+      })
     }
     $.child = []
     $.sync = true
@@ -75,6 +103,11 @@ define(['LF/util'], function (util) {
   TC.preventDefault = false
   TC.enable = function (en) {
     TC.enabled = en
+    if (!en) {
+      for (let i = 0; i < controllers.length; i++) {
+        if (controllers[i].joy) { controllers[i].joystick_release() }
+      }
+    }
   }
   TC.prototype.type = 'touch'
   TC.prototype.resize = function () {
@@ -82,28 +115,23 @@ define(['LF/util'], function (util) {
     const w = window.innerWidth
     let h = window.innerHeight
     if ($.config.layout === 'gamepad') {
-      let sizeA = 0.20
       let sizeB = 0.20
       let sizeC = 0.25
-      const padL = 0.1
       const padR = 0.2
       let offy = 0
-      const R = 0.65
       if (h > w) {
         offy = h / 2
         h = w / 16 * 9 * 1.5
       } else {
         offy = h / 5
       }
-      sizeA *= h
+      $.joystick_release()
+      $.joy.r = Math.max(40, Math.min(w, window.innerHeight) * 0.13)
+      $.joy.base.style.width = $.joy.base.style.height = ($.joy.r * 2) + 'px'
       sizeB *= h
       sizeC *= h
       this.set_button_pos({
         // 'name':[ left, top, width, height ],
-        up: [sizeA * padL, h / 2 - sizeA + offy, sizeA * 2, sizeA * R],
-        down: [sizeA * padL, h / 2 + sizeA * (1 - R) + offy, sizeA * 2, sizeA * R],
-        left: [sizeA * padL, h / 2 - sizeA + offy, sizeA * R, sizeA * 2],
-        right: [sizeA * (2 - R + padL), h / 2 - sizeA + offy, sizeA * R, sizeA * 2],
         def: [w - sizeB * (1.5 + padR), h / 2 + offy, sizeB, sizeB],
         jump: [w - sizeB - sizeC * (1 + padR), h / 2 - sizeB + offy, sizeB, sizeB],
         att: [w - sizeC * (1 + padR), h / 2 - sizeC + offy, sizeC, sizeC]
@@ -173,6 +201,7 @@ define(['LF/util'], function (util) {
   }
   TC.prototype.hide = function () {
     const $ = this
+    if ($.joy) { $.joystick_release() }
     for (const i in $.button) {
       hide($.button[i])
       $.button[i].disabled = true
@@ -193,6 +222,93 @@ define(['LF/util'], function (util) {
       this.paused(false)
     }
   }
+  // press or release the direction keys so that they match the knob vector
+  TC.prototype.joystick_set = function (dir) {
+    const $ = this
+    for (const key in dir) {
+      if (!!dir[key] !== !!$.state[key]) {
+        for (let i = 0; i < $.child.length; i++) {
+          $.child[i].key(key, !!dir[key])
+        }
+        $.state[key] = dir[key] ? 1 : 0
+      }
+    }
+  }
+  TC.prototype.joystick_release = function () {
+    const $ = this
+    const J = $.joy
+    J.id = null
+    J.base.style.display = 'none'
+    $.joystick_set({ up: 0, down: 0, left: 0, right: 0 })
+  }
+  TC.prototype.joystick = function (event) {
+    const $ = this
+    const J = $.joy
+    if ($.hidden || !TC.enabled) {
+      if (J.id !== null) { $.joystick_release() }
+      return
+    }
+    const changed = event.changedTouches
+    let T = null
+    if (event.type === 'touchstart') {
+      if (J.id !== null) { return }
+      for (let i = 0; i < changed.length; i++) {
+        const t = changed[i]
+        if (t.clientX >= window.innerWidth / 2) { continue }
+        let onbutton = false
+        for (let c = 0; c < controllers.length; c++) {
+          const btn = controllers[c].button
+          for (const key in btn) {
+            if (!btn[key].disabled && !controllers[c].hidden && point_in_rect(t.clientX, t.clientY, btn[key])) { onbutton = true }
+          }
+        }
+        if (onbutton) { continue }
+        J.id = t.identifier
+        J.x = t.clientX
+        J.y = t.clientY
+        J.base.style.left = (J.x - J.r) + 'px'
+        J.base.style.top = (J.y - J.r) + 'px'
+        J.base.style.display = 'block'
+        T = t
+        break
+      }
+      if (!T) { return }
+      if (TC.preventDefault) { event.preventDefault() }
+    } else {
+      if (J.id === null) { return }
+      for (let i = 0; i < changed.length; i++) {
+        if (changed[i].identifier === J.id) { T = changed[i] }
+      }
+      if (!T) { return }
+      if (event.type === 'touchend' || event.type === 'touchcancel' || event.type === 'touchleave') {
+        $.joystick_release()
+        return
+      }
+    }
+    // clamp the knob to the base
+    let dx = T.clientX - J.x
+    let dy = T.clientY - J.y
+    const len = Math.sqrt(dx * dx + dy * dy)
+    if (len > J.r) {
+      dx = dx / len * J.r
+      dy = dy / len * J.r
+    }
+    J.knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'
+    // deadzone, then 8-way: a direction is pressed when its axis share is large enough
+    const dead = J.r * ($.state.up || $.state.down || $.state.left || $.state.right ? 0.2 : 0.28)
+    const dir = { up: 0, down: 0, left: 0, right: 0 }
+    if (len > dead) {
+      const nx = dx / len
+      const ny = dy / len
+      // 8 equal sectors (sin 22.5deg = 0.38); a held direction needs less to stay
+      const on = 0.38
+      const off = 0.28
+      const S = $.state
+      if (nx < -(S.left ? off : on)) { dir.left = 1 } else if (nx > (S.right ? off : on)) { dir.right = 1 }
+      if (ny < -(S.up ? off : on)) { dir.up = 1 } else if (ny > (S.down ? off : on)) { dir.down = 1 }
+    }
+    $.joystick_set(dir)
+  }
   TC.prototype.clear_states = function () {
     for (const I in this.state) {
       this.state[I] = 0
@@ -210,6 +326,7 @@ define(['LF/util'], function (util) {
       let down = false
       for (var i = 0; i < touches.length; i++) {
         const T = touches[i]
+        if ($.joy && T.identifier === $.joy.id) { continue }
         if (point_in_rect(T.clientX, T.clientY, $.button[key])) {
           down = true
           break
