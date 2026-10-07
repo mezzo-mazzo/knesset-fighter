@@ -328,7 +328,7 @@ html, body
 {
 	display:inline-block;
 	vertical-align:middle;
-	width:0.85em; height:0.85em;
+	width:1.7em; height:1.7em;
 }
 /* the gestures scheme swaps the three buttons for one pad during a match */
 .touch_pad

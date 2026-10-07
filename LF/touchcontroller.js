@@ -3,7 +3,7 @@
  *
  * touch controller for LF2
 \*/
-define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
+define(['LF/util', 'LF/moveicons', 'third_party/nipplejs'], function (util, moveicons, nipplejs) {
   const controllers = []
   const SVG = '<svg class="touch_icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">'
   const ICON = {
@@ -22,19 +22,20 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
      the arc, up moves high, forward in the middle, and the attack variant of a
      pair nearer the middle. a character only shows the slots it has. */
   const MACROS = [
-    { tag: 'hit_ja', seq: ['def', 'jump', 'att'], arrow: '' },
-    { tag: 'hit_Dj', seq: ['def', 'down', 'jump'], arrow: '↓' },
-    { tag: 'hit_Da', seq: ['def', 'down', 'att'], arrow: '↓' },
-    { tag: 'hit_Fa', seq: ['def', 'forward', 'att'], arrow: '→' },
-    { tag: 'hit_Fj', seq: ['def', 'forward', 'jump'], arrow: '→' },
-    { tag: 'hit_Ua', seq: ['def', 'up', 'att'], arrow: '↑' },
-    { tag: 'hit_Uj', seq: ['def', 'up', 'jump'], arrow: '↑' }
+    { tag: 'hit_ja', seq: ['def', 'jump', 'att'] },
+    { tag: 'hit_Dj', seq: ['def', 'down', 'jump'] },
+    { tag: 'hit_Da', seq: ['def', 'down', 'att'] },
+    { tag: 'hit_Fa', seq: ['def', 'forward', 'att'] },
+    { tag: 'hit_Fj', seq: ['def', 'forward', 'jump'] },
+    { tag: 'hit_Ua', seq: ['def', 'up', 'att'] },
+    { tag: 'hit_Uj', seq: ['def', 'up', 'jump'] }
   ]
   const MACRO_ARC = [8, 82] // degrees above the bottom edge, first and last slot
   const HIT = 1.15 // a touch presses the nearest circle within this many radii
-  // the gestures scheme: one pad, hold = defend, double tap = jump, swipe = attack
-  const HOLD_MS = 150
-  const DOUBLE_MS = 280
+  // the gestures scheme: one pad, tap = attack, swipe up = jump, hold = defend
+  const HOLD_MS = 200 // a touch this long without moving is a hold
+  const MOVE_PX = 15 // a finger moving farther than this is no tap or hold
+  const SWIPE_PX = 30 // an upward swipe: this far, and steeper than 1.5 : 1
   let touches = []; let eventtype
   function touch_fun(event) {
     if (!TC.enabled) { return }
@@ -102,21 +103,20 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       $.joy_dir = {}
       $.pulse = {} // keys pressed for a single frame
       $.character = null
-      $.gesture = { id: null, last_tap: 0, jumps: 0, swipes: 0, def: false, jump: false }
+      $.gesture = { id: null, taps: 0, jumps: 0, def: false }
       $.macro = []
       for (let i = 0; i < MACROS.length; i++) {
         const M = MACROS[i]
-        const last = M.seq[M.seq.length - 1]
         const el = document.createElement('div')
         el.className = 'touch_controller_button touch_macro'
-        el.innerHTML = '<span>' + (M.arrow ? '<b>' + M.arrow + '</b>' : ICON.jump) + ICON[last] + '</span>'
+        el.innerHTML = '<span></span>' // the icon depends on the character's move
         util.div('touch_control_holder').appendChild(el)
         $.macro.push({ tag: M.tag, seq: M.seq, el: el, available: false, down: false, hold: [] })
       }
       $.pad = { el: document.createElement('div') }
       $.pad.el.className = 'touch_controller_button touch_pad'
-      $.pad.el.innerHTML = '<span><i>' + ICON.def + '<small>hold</small></i>' +
-        '<i>' + ICON.jump + '<small>2×</small></i><i>' + ICON.att + '<small>swipe</small></i></span>'
+      $.pad.el.innerHTML = '<span><i>' + ICON.att + '<small>tap</small></i>' +
+        '<i>' + ICON.jump + '<small>swipe</small></i><i>' + ICON.def + '<small>hold</small></i></span>'
       util.div('touch_control_holder').appendChild($.pad.el)
     }
     if ($.joy) {
@@ -145,7 +145,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   TC.preventDefault = false
   /*\
    * the gamepad scheme: 'buttons' (attack, jump and defend buttons) or
-   * 'gestures' (one pad: hold = defend, double tap = jump, swipe = attack).
+   * 'gestures' (one pad: tap = attack, swipe up = jump, hold = defend).
    * the macros are there in both.
   \*/
   TC.scheme = 'buttons'
@@ -302,19 +302,52 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       const M = $.macro[i]
       M.available = false
       M.mp = Infinity
+      M.chain = {} // the frames of the move, where its follow-up key continues it
       for (const k in frame) {
         const target = frame[k][M.tag]
         if (target > 0 && frame[target]) {
           M.available = true
           M.el.title = String(frame[target].name).replace(/[_]/g, ' ')
+          M.move = frame[target].name
           // the mp a move costs, as character.js checks it before entering the frame
           M.mp = Math.min(M.mp, frame[target].mp > 0 ? frame[target].mp % 1000 : 0)
+          chain_frames(frame, target, M.chain)
         }
       }
       M.el.classList.toggle('available', M.available)
       M.el.classList.remove('no_mp')
       M.no_mp = false
     }
+    // the icons are picked together, so that no two of them look the same
+    const shown = $.macro.filter(function (M) { return M.available })
+    const icons = moveicons.for_moves(shown.map(function (M) { return { name: M.move, tag: M.tag } }))
+    for (let i = 0; i < shown.length; i++) {
+      shown[i].el.firstChild.innerHTML = icons[i].svg
+    }
+  }
+  // every frame a move can reach through next and hit_a/hit_j, the move's own
+  // frames: a chainable move (ball1 -> ball2 -> ...) links to its next shot there
+  function chain_frames(frame, start, into) {
+    const todo = [start]
+    while (todo.length) {
+      const n = todo.pop()
+      if (into[n] || !frame[n] || frame[n].state !== frame[start].state) { continue }
+      into[n] = true
+      const F = frame[n]
+      const links = [F.next, F.hit_a, F.hit_j]
+      for (let i = 0; i < links.length; i++) {
+        if (links[i] > 0 && links[i] < 999) { todo.push(links[i]) }
+      }
+    }
+  }
+  // the key that continues the move at its current frame, if it is in a chain window
+  TC.prototype.chain_key = function (M) {
+    const C = this.character
+    const F = C && C.frame && C.frame.D
+    if (!F || !M.chain[C.frame.N]) { return null }
+    const last = M.seq[M.seq.length - 1]
+    const link = last === 'att' ? F.hit_a : last === 'jump' ? F.hit_j : 0
+    return link > 0 && link < 999 ? last : null
   }
   // the gamepad has three sources of held keys: the joystick, the buttons
   // (or the gesture pad) and the macros. a key is down while any wants it.
@@ -323,7 +356,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     const G = $.gesture
     if ($.joy_dir[key] || $.pulse[key]) { return true }
     if ($.button[key] && $.button[key].down) { return true }
-    if ((key === 'def' && G.def) || (key === 'jump' && G.jump)) { return true }
+    if (key === 'def' && G.def) { return true }
     for (let i = 0; i < $.macro.length; i++) {
       if ($.macro[i].hold.indexOf(key) !== -1) { return true }
     }
@@ -355,8 +388,8 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     for (let i = 0; i < $.macro.length; i++) { $.macro[i].hold = [] }
     const G = $.gesture
     G.id = null
-    G.def = G.jump = false
-    G.jumps = G.swipes = 0
+    G.def = false
+    G.taps = G.jumps = 0
     for (const key in $.state) { $.sync_key(key) }
   }
   TC.prototype.gestures_on = function () {
@@ -370,7 +403,6 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     const $ = this
     const G = $.gesture
     const P = $.pad
-    const swipe = P.r * 0.22
     const now = Date.now()
     for (let i = 0; i < event.changedTouches.length; i++) {
       const T = event.changedTouches[i]
@@ -379,37 +411,25 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       if (event.type === 'touchstart') {
         if (G.id !== null || Math.hypot(x - P.x, y - P.y) > P.r) { continue }
         G.id = T.identifier
-        G.x0 = G.ax = x
-        G.y0 = G.ay = y
+        G.x0 = x
+        G.y0 = y
         G.t0 = now
-        G.dir = null
-        G.moved = false
-        if (now - G.last_tap < DOUBLE_MS) { // the second tap: jump, held while the finger stays
-          G.jump = true
-          G.jumps++
-        }
-        G.last_tap = 0
+        G.moved = false // the finger left its spot: no tap, no hold
+        G.done = false // the swipe fired: nothing else counts for this touch
       } else if (T.identifier === G.id) {
         if (event.type === 'touchmove') {
-          if (Math.hypot(x - G.x0, y - G.y0) > swipe / 2) { G.moved = true }
-          const dx = x - G.ax
-          const dy = y - G.ay
-          const d = Math.hypot(dx, dy)
-          // one attack per stroke: while the finger keeps its direction the
-          // anchor follows it, so the next stroke counts from the turn
-          if (G.dir && dx * G.dir[0] + dy * G.dir[1] > 0.7 * d) {
-            G.ax = x
-            G.ay = y
-          } else if (d >= swipe) {
-            G.swipes++
-            G.dir = [dx / d, dy / d]
-            G.ax = x
-            G.ay = y
+          const dx = x - G.x0
+          const dy = y - G.y0
+          if (!G.done && -dy > SWIPE_PX && -dy > Math.abs(dx) * 1.5) {
+            G.done = true
+            G.jumps++
+          } else if (!G.def && Math.hypot(dx, dy) > MOVE_PX) {
+            G.moved = true
           }
         } else { // touchend, touchcancel, touchleave
-          if (!G.moved && !G.def && !G.jump && now - G.t0 < HOLD_MS) { G.last_tap = now }
+          if (!G.moved && !G.done && !G.def && now - G.t0 < HOLD_MS && event.type === 'touchend') { G.taps++ }
           G.id = null
-          G.def = G.jump = false
+          G.def = false
         }
       }
     }
@@ -417,7 +437,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   TC.prototype.gesture_frame = function () {
     const $ = this
     const G = $.gesture
-    if (G.id !== null && !G.moved && !G.def && !G.jump && Date.now() - G.t0 >= HOLD_MS) {
+    if (G.id !== null && !G.moved && !G.done && !G.def && Date.now() - G.t0 >= HOLD_MS) {
       G.def = true
     }
     if (G.jumps) {
@@ -425,9 +445,8 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       $.pulse.jump = 1
       $.stroke('jump')
     }
-    if (G.swipes) { // a swipe drops the guard and strikes
-      G.swipes = 0
-      G.def = false
+    if (G.taps) {
+      G.taps = 0
       $.pulse.att = 1
       $.stroke('att')
     }
@@ -445,6 +464,21 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     const C = $.character
     let forward = C && C.ps && C.ps.dir === 'left' ? 'left' : 'right'
     if ($.joy_dir.left) { forward = 'left' } else if ($.joy_dir.right) { forward = 'right' }
+    // in a chain window the follow-up key alone continues the move, as for a keyboard player
+    const chain = $.chain_key(M)
+    if (chain) {
+      M.chain_n = C.frame.N
+      $.stroke(chain)
+      M.hold = [chain]
+      $.sync_key(chain)
+      return
+    }
+    // the move is running but its window is not open yet: remember the press
+    // for the window, which lasts a frame or two
+    if (C && C.frame && M.chain[C.frame.N]) {
+      M.pending = true
+      return
+    }
     const seq = []
     for (let i = 0; i < M.seq.length; i++) {
       seq.push(M.seq[i] === 'forward' ? forward : M.seq[i])
@@ -638,6 +672,19 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
         M.down = down
         M.el.classList.toggle('pressed', down)
         if (down) { $.macro_press(M) } else { $.macro_release(M) }
+      }
+      // a press made before the window, or a finger held down: every chain
+      // window continues the move once
+      const C = $.character
+      if (M.pending && !(C && C.frame && M.chain[C.frame.N])) { M.pending = false }
+      if (M.pending || down) {
+        const chain = $.chain_key(M)
+        if (!chain) { M.chain_n = null }
+        if (chain && C.frame.N !== M.chain_n) {
+          M.chain_n = C.frame.N
+          M.pending = false
+          $.stroke(chain)
+        }
       }
     }
   }

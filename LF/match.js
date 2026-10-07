@@ -415,6 +415,7 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         controller: null,
         team: 0
       }
+      let local_players = 0
       for (let i = 0; i < players.length; i++) {
         var player = players[i]
         const player_obj = util.select_from($.data.object, { id: player.id })
@@ -443,6 +444,12 @@ define(['core/util', 'core/controller', 'LF/sprite-select',
         } else {
           const pos = $.background.get_pos($.random(), $.random())
           char.set_pos(pos.x, pos.y, pos.z)
+        }
+        // a ring under each character played on this device, in its player's color
+        if (factory.character.is_local_player(char.con)) {
+          const from = option.replace && player.spec.replace_from
+          char.add_player_mark(from && from.player_mark ? from.player_mark_index : local_players)
+          local_players++
         }
         // option
         var uid

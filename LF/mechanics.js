@@ -361,6 +361,9 @@ define(['LF/global'], function (Global) {
       this.sha.set_x_y(Math.floor(ps.x - this.bg.shadow.x), Math.floor(ps.z - this.bg.shadow.y))
       this.sha.set_z(Math.floor(ps.sz - 1))
     }
+    if (this.parent.player_mark) {
+      this.parent.place_player_mark()
+    }
 
     if (ps.y === 0 && this.mass > 0) // only when on the ground
     {

@@ -1,9 +1,17 @@
 /** a LF2 character
  */
 
-define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util'],
-  function (livingobject, Global, Fcombodec, Futil, util) {
+define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util', 'LF/sprite-select'],
+  function (livingobject, Global, Fcombodec, Futil, util, Fsprite) {
     const GC = Global.gameplay
+
+    // the ring under the feet of a character played on this device, one color per local player
+    const player_mark = {
+      color: ['#2fa8ff', '#ff3d3d', '#3ddc3d', '#ffc400', '#d050ff', '#ff8a1f', '#20e0d0', '#ff5fb0'],
+      rx: 44, // 2x port: 22 -> 44
+      ry: 14, // 2x port: 7 -> 14
+      line: 4 // 2x port: 2 -> 4
+    }
 
     const states =
     {
@@ -1528,10 +1536,58 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
     character.prototype.destroy = function () {
       const $ = this
       livingobject.prototype.destroy.call(this)
+      if ($.player_mark) {
+        $.player_mark.remove()
+      }
       // (handled by manager.js) remove combo listener to controller
       if ($.con && $.con.attach_character && $.con.character === $) {
         $.con.attach_character(null)
       }
+    }
+
+    /*\
+     * character.is_local_player
+     * whether `con` is a human playing on this device: not an AI controller (which
+     * clones and other summoned characters always have) and not the stand-in for
+     * a peer's player in a network game
+    \*/
+    character.is_local_player = function (con) {
+      return !!con && con.type !== 'AIcontroller' && con.role !== 'remote'
+    }
+
+    /*\
+     * character.add_player_mark
+     * put a colored ring on the ground under the character, `index` picks the color.
+     * the ring is a sprite of its own, so it stays when the body and shadow are hidden
+    \*/
+    character.prototype.add_player_mark = function (index) {
+      const $ = this
+      if ($.player_mark) {
+        return
+      }
+      $.player_mark_index = index
+      $.player_mark = new Fsprite({ canvas: $.match.stage })
+      $.player_mark.color = player_mark.color[index % player_mark.color.length]
+      $.player_mark.render = render_player_mark
+      $.place_player_mark()
+    }
+    character.prototype.place_player_mark = function () {
+      const ps = this.ps
+      this.player_mark.set_x_y(Math.floor(ps.x), Math.floor(ps.z)) // the center, where the shadow is
+      this.player_mark.set_z(Math.floor(ps.sz - 2)) // beneath the shadow and the body
+    }
+    function render_player_mark(ctx) {
+      if (this.hidden || !ctx) return
+      const alpha = ctx.globalAlpha
+      ctx.beginPath()
+      ctx.ellipse(this.x, this.y, player_mark.rx, player_mark.ry, 0, 0, 2 * Math.PI)
+      ctx.fillStyle = ctx.strokeStyle = this.color
+      ctx.lineWidth = player_mark.line
+      ctx.globalAlpha = alpha * 0.3
+      ctx.fill()
+      ctx.globalAlpha = alpha * 0.9
+      ctx.stroke()
+      ctx.globalAlpha = alpha
     }
 
     // to emit a combo event
