@@ -15,11 +15,34 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       '<path d="M12 14V3.5M6.5 9l5.5-5.5L17.5 9" fill="none" stroke-width="2.4"/>' +
       '<path d="M8 17.5v5M12 17.5v5M16 17.5v5" fill="none" stroke-width="1.6"/></svg>'
   }
+  /* the gamepad is radial around the bottom right corner, where the thumb
+     pivots: the attack hub, then jump and defend on a ring around it, then a
+     gap, then the special move macros on an outer ring. every macro has a fixed
+     slot, so a move sits at the same spot for every character: down moves low on
+     the arc, up moves high, forward in the middle, and the attack variant of a
+     pair nearer the middle. a character only shows the slots it has. */
+  const MACROS = [
+    { tag: 'hit_ja', seq: ['def', 'jump', 'att'], arrow: '' },
+    { tag: 'hit_Dj', seq: ['def', 'down', 'jump'], arrow: '↓' },
+    { tag: 'hit_Da', seq: ['def', 'down', 'att'], arrow: '↓' },
+    { tag: 'hit_Fa', seq: ['def', 'forward', 'att'], arrow: '→' },
+    { tag: 'hit_Fj', seq: ['def', 'forward', 'jump'], arrow: '→' },
+    { tag: 'hit_Ua', seq: ['def', 'up', 'att'], arrow: '↑' },
+    { tag: 'hit_Uj', seq: ['def', 'up', 'jump'], arrow: '↑' }
+  ]
+  const MACRO_ARC = [8, 82] // degrees above the bottom edge, first and last slot
+  const HIT = 1.15 // a touch presses the nearest circle within this many radii
+  // the gestures scheme: one pad, hold = defend, double tap = jump, swipe = attack
+  const HOLD_MS = 150
+  const DOUBLE_MS = 280
   let touches = []; let eventtype
   function touch_fun(event) {
     if (!TC.enabled) { return }
     eventtype = event.type
     touches = event.touches
+    for (let i = 0; i < controllers.length; i++) {
+      if (controllers[i].gestures_on()) { controllers[i].gesture_touch(event) }
+    }
     for (const i in controllers) {
       if (!controllers[i].sync) {
         controllers[i].fetch()
@@ -34,7 +57,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   }
   function release_all() {
     for (let i = 0; i < controllers.length; i++) {
-      if (controllers[i].joy) { controllers[i].joystick_release() }
+      if (controllers[i].joy) { controllers[i].release_held() }
     }
   }
   window.addEventListener('blur', release_all, false)
@@ -69,18 +92,39 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       zone.className = 'touch_joy_zone'
       util.div('touch_control_holder').appendChild(zone)
       $.joy = { zone: zone, nipple: null, r: 60, w: 0, h: 0 }
-      // the zone is only shown during a match (CSS), so
-      // let go of the keys when another screen takes over
+      // the zone, the macros and the gesture pad are only shown during a match
+      // (CSS), so let go of the keys when another screen takes over
+      $.gameplay = false
       new MutationObserver(function () {
-        if (getComputedStyle(zone).display === 'none') { $.joystick_release() }
+        $.gameplay = getComputedStyle(zone).display !== 'none'
+        if (!$.gameplay) { $.release_held() }
       }).observe(util.root, { attributes: true, attributeFilter: ['class'] })
+      $.joy_dir = {}
+      $.pulse = {} // keys pressed for a single frame
+      $.character = null
+      $.gesture = { id: null, last_tap: 0, jumps: 0, swipes: 0, def: false, jump: false }
+      $.macro = []
+      for (let i = 0; i < MACROS.length; i++) {
+        const M = MACROS[i]
+        const last = M.seq[M.seq.length - 1]
+        const el = document.createElement('div')
+        el.className = 'touch_controller_button touch_macro'
+        el.innerHTML = '<span>' + (M.arrow ? '<b>' + M.arrow + '</b>' : ICON.jump) + ICON[last] + '</span>'
+        util.div('touch_control_holder').appendChild(el)
+        $.macro.push({ tag: M.tag, seq: M.seq, el: el, available: false, down: false, hold: [] })
+      }
+      $.pad = { el: document.createElement('div') }
+      $.pad.el.className = 'touch_controller_button touch_pad'
+      $.pad.el.innerHTML = '<span><i>' + ICON.def + '<small>hold</small></i>' +
+        '<i>' + ICON.jump + '<small>2×</small></i><i>' + ICON.att + '<small>swipe</small></i></span>'
+      util.div('touch_control_holder').appendChild($.pad.el)
     }
     if ($.joy) {
-      // new children (a match boundary) never saw the held directions: let go first
+      // new children (a match boundary) never saw the held keys: let go first
       let child = []
       Object.defineProperty($, 'child', {
         get: function () { return child },
-        set: function (c) { $.joystick_release(); child = c },
+        set: function (c) { $.release_held(); child = c },
         enumerable: true
       })
     }
@@ -91,7 +135,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     for (const key in $.button) {
       const el = document.createElement('div')
       util.div('touch_control_holder').appendChild(el)
-      el.className = 'touch_controller_button'
+      el.className = 'touch_controller_button' + ($.joy ? ' touch_main' : '')
       el.innerHTML = '<span>' + $.button[key].label + '</span>'
       $.button[key].el = el
     }
@@ -99,6 +143,19 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   }
   TC.enabled = false
   TC.preventDefault = false
+  /*\
+   * the gamepad scheme: 'buttons' (attack, jump and defend buttons) or
+   * 'gestures' (one pad: hold = defend, double tap = jump, swipe = attack).
+   * the macros are there in both.
+  \*/
+  TC.scheme = 'buttons'
+  TC.set_scheme = function (scheme) {
+    TC.scheme = scheme === 'gestures' ? 'gestures' : 'buttons'
+    util.root.classList.toggle('touch_gestures', TC.scheme === 'gestures')
+    for (let i = 0; i < controllers.length; i++) {
+      if (controllers[i].joy) { controllers[i].release_held() }
+    }
+  }
   TC.enable = function (en) {
     TC.enabled = en
     for (let i = 0; i < controllers.length; i++) {
@@ -109,18 +166,8 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   TC.prototype.resize = function () {
     const $ = this
     const w = window.innerWidth
-    let h = window.innerHeight
+    const h = window.innerHeight
     if ($.config.layout === 'gamepad') {
-      let sizeB = 0.20
-      let sizeC = 0.25
-      const padR = 0.2
-      let offy = 0
-      if (h > w) {
-        offy = h / 2
-        h = w / 16 * 9 * 1.5
-      } else {
-        offy = h / 5
-      }
       const r = Math.max(40, Math.min(w, window.innerHeight) * 0.13)
       const J = $.joy
       // the URL bar showing or hiding fires resize too: only rebuild on a real change
@@ -128,14 +175,31 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
         J.r = r
         $.joystick_build()
       }
-      sizeB *= h
-      sizeC *= h
-      this.set_button_pos({
-        // 'name':[ left, top, width, height ],
-        def: [w - sizeB * (1.5 + padR), h / 2 + offy, sizeB, sizeB],
-        jump: [w - sizeB - sizeC * (1 + padR), h / 2 - sizeB + offy, sizeB, sizeB],
-        att: [w - sizeC * (1 + padR), h / 2 - sizeC + offy, sizeC, sizeC]
-      })
+      // the unit: small enough that the outer ring stays on the right half,
+      // which is the only half that presses buttons
+      const u = Math.min(h, w * 0.7)
+      const px = w - u * 0.02
+      const py = h - u * 0.02
+      // a circle `dist` from the corner pivot, `deg` degrees above the bottom edge
+      const place = function (B, dist, deg, r, font) {
+        const a = deg * Math.PI / 180
+        B.x = px - dist * u * Math.cos(a)
+        B.y = py - dist * u * Math.sin(a)
+        B.r = r * u
+        B.el.style.left = (B.x - B.r) + 'px'
+        B.el.style.top = (B.y - B.r) + 'px'
+        B.el.style.width = B.el.style.height = (B.r * 2) + 'px'
+        B.el.style.fontSize = (B.r * font) + 'px'
+      }
+      place($.button.att, 0.19, 45, 0.11, 0.5)
+      place($.button.jump, 0.40, 18, 0.085, 0.5)
+      place($.button.def, 0.40, 72, 0.085, 0.5)
+      // the pad covers the hub and the first ring, the corner may cut it
+      place($.pad, 0.23, 45, 0.25, 0.16)
+      for (let i = 0; i < $.macro.length; i++) {
+        const deg = MACRO_ARC[0] + i * (MACRO_ARC[1] - MACRO_ARC[0]) / ($.macro.length - 1)
+        place($.macro[i], 0.635, deg, 0.058, 0.62)
+      }
     } else if ($.config.layout === 'functionkey') {
       $.paused($.pause_state)
     }
@@ -206,16 +270,193 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
       $.button[i].disabled = true
     }
     $.hidden = true
-    if ($.joy) { $.joystick_sync() }
+    if ($.joy) {
+      hide($.pad)
+      for (let i = 0; i < $.macro.length; i++) { hide($.macro[i]) }
+      $.joystick_sync()
+    }
   }
   TC.prototype.show = function () {
     const $ = this
     $.hidden = false
-    if ($.joy) { $.joystick_sync() }
+    if ($.joy) {
+      show($.pad)
+      for (let i = 0; i < $.macro.length; i++) { show($.macro[i]) }
+      $.joystick_sync()
+    }
     for (const i in $.button) {
       show($.button[i])
       $.button[i].disabled = false
     }
+  }
+  /*\
+   * the character this gamepad plays, set by the character itself (and null
+   * when it is destroyed): it decides which macros show and where forward is
+  \*/
+  TC.prototype.attach_character = function (character) {
+    const $ = this
+    if (!$.joy) { return }
+    $.character = character
+    const frame = character && character.data && character.data.frame
+    for (let i = 0; i < $.macro.length; i++) {
+      const M = $.macro[i]
+      M.available = false
+      M.mp = Infinity
+      for (const k in frame) {
+        const target = frame[k][M.tag]
+        if (target > 0 && frame[target]) {
+          M.available = true
+          M.el.title = String(frame[target].name).replace(/[_]/g, ' ')
+          // the mp a move costs, as character.js checks it before entering the frame
+          M.mp = Math.min(M.mp, frame[target].mp > 0 ? frame[target].mp % 1000 : 0)
+        }
+      }
+      M.el.classList.toggle('available', M.available)
+      M.el.classList.remove('no_mp')
+      M.no_mp = false
+    }
+  }
+  // the gamepad has three sources of held keys: the joystick, the buttons
+  // (or the gesture pad) and the macros. a key is down while any wants it.
+  TC.prototype.wants = function (key) {
+    const $ = this
+    const G = $.gesture
+    if ($.joy_dir[key] || $.pulse[key]) { return true }
+    if ($.button[key] && $.button[key].down) { return true }
+    if ((key === 'def' && G.def) || (key === 'jump' && G.jump)) { return true }
+    for (let i = 0; i < $.macro.length; i++) {
+      if ($.macro[i].hold.indexOf(key) !== -1) { return true }
+    }
+    return false
+  }
+  TC.prototype.emit = function (key, down) {
+    const $ = this
+    for (let i = 0; i < $.child.length; i++) {
+      $.child[i].key(key, down)
+    }
+    $.state[key] = down ? 1 : 0
+  }
+  TC.prototype.sync_key = function (key) {
+    const want = this.wants(key)
+    if (want !== !!this.state[key]) { this.emit(key, want) }
+  }
+  // a fresh key stroke even when the key is held already, which the combo
+  // decoder would otherwise ignore as a repeat
+  TC.prototype.stroke = function (key) {
+    if (this.state[key]) { this.emit(key, false) }
+    this.emit(key, true)
+  }
+  // let go of everything that is not a finger on a button right now
+  TC.prototype.release_held = function () {
+    const $ = this
+    if (!$.joy) { return }
+    $.joy_dir = {}
+    $.pulse = {}
+    for (let i = 0; i < $.macro.length; i++) { $.macro[i].hold = [] }
+    const G = $.gesture
+    G.id = null
+    G.def = G.jump = false
+    G.jumps = G.swipes = 0
+    for (const key in $.state) { $.sync_key(key) }
+  }
+  TC.prototype.gestures_on = function () {
+    return !!this.joy && TC.scheme === 'gestures' && this.gameplay && !this.hidden
+  }
+  /*\
+   * the gesture pad works on the touch events themselves, so that a quick tap
+   * between two frames still counts; `fetch` turns the result into keys
+  \*/
+  TC.prototype.gesture_touch = function (event) {
+    const $ = this
+    const G = $.gesture
+    const P = $.pad
+    const swipe = P.r * 0.22
+    const now = Date.now()
+    for (let i = 0; i < event.changedTouches.length; i++) {
+      const T = event.changedTouches[i]
+      const x = T.clientX
+      const y = T.clientY
+      if (event.type === 'touchstart') {
+        if (G.id !== null || Math.hypot(x - P.x, y - P.y) > P.r) { continue }
+        G.id = T.identifier
+        G.x0 = G.ax = x
+        G.y0 = G.ay = y
+        G.t0 = now
+        G.dir = null
+        G.moved = false
+        if (now - G.last_tap < DOUBLE_MS) { // the second tap: jump, held while the finger stays
+          G.jump = true
+          G.jumps++
+        }
+        G.last_tap = 0
+      } else if (T.identifier === G.id) {
+        if (event.type === 'touchmove') {
+          if (Math.hypot(x - G.x0, y - G.y0) > swipe / 2) { G.moved = true }
+          const dx = x - G.ax
+          const dy = y - G.ay
+          const d = Math.hypot(dx, dy)
+          // one attack per stroke: while the finger keeps its direction the
+          // anchor follows it, so the next stroke counts from the turn
+          if (G.dir && dx * G.dir[0] + dy * G.dir[1] > 0.7 * d) {
+            G.ax = x
+            G.ay = y
+          } else if (d >= swipe) {
+            G.swipes++
+            G.dir = [dx / d, dy / d]
+            G.ax = x
+            G.ay = y
+          }
+        } else { // touchend, touchcancel, touchleave
+          if (!G.moved && !G.def && !G.jump && now - G.t0 < HOLD_MS) { G.last_tap = now }
+          G.id = null
+          G.def = G.jump = false
+        }
+      }
+    }
+  }
+  TC.prototype.gesture_frame = function () {
+    const $ = this
+    const G = $.gesture
+    if (G.id !== null && !G.moved && !G.def && !G.jump && Date.now() - G.t0 >= HOLD_MS) {
+      G.def = true
+    }
+    if (G.jumps) {
+      G.jumps = 0
+      $.pulse.jump = 1
+      $.stroke('jump')
+    }
+    if (G.swipes) { // a swipe drops the guard and strikes
+      G.swipes = 0
+      G.def = false
+      $.pulse.att = 1
+      $.stroke('att')
+    }
+    $.sync_key('def')
+    $.sync_key('jump')
+    const S = $.state
+    $.pad.el.classList.toggle('def', !!S.def)
+    $.pad.el.classList.toggle('jump', !!S.jump)
+    $.pad.el.classList.toggle('att', !!$.pulse.att)
+  }
+  // tap the macro's keys in order within this frame, the combo decoder sees
+  // the special; the last key stays down while the finger does
+  TC.prototype.macro_press = function (M) {
+    const $ = this
+    const C = $.character
+    let forward = C && C.ps && C.ps.dir === 'left' ? 'left' : 'right'
+    if ($.joy_dir.left) { forward = 'left' } else if ($.joy_dir.right) { forward = 'right' }
+    const seq = []
+    for (let i = 0; i < M.seq.length; i++) {
+      seq.push(M.seq[i] === 'forward' ? forward : M.seq[i])
+      $.stroke(seq[i])
+    }
+    M.hold = [seq[seq.length - 1]]
+    for (let i = 0; i < seq.length; i++) { $.sync_key(seq[i]) }
+  }
+  TC.prototype.macro_release = function (M) {
+    const hold = M.hold
+    M.hold = []
+    for (let i = 0; i < hold.length; i++) { this.sync_key(hold[i]) }
   }
   TC.prototype.restart = function () {
     const $ = this
@@ -226,14 +467,8 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   // press or release the direction keys so that they match the knob vector
   TC.prototype.joystick_set = function (dir) {
     const $ = this
-    for (const key in dir) {
-      if (!!dir[key] !== !!$.state[key]) {
-        for (let i = 0; i < $.child.length; i++) {
-          $.child[i].key(key, !!dir[key])
-        }
-        $.state[key] = dir[key] ? 1 : 0
-      }
-    }
+    $.joy_dir = dir
+    for (const key in dir) { $.sync_key(key) }
   }
   TC.prototype.joystick_release = function () {
     this.joystick_set({ up: 0, down: 0, left: 0, right: 0 })
@@ -286,7 +521,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
     const on = !$.hidden && TC.enabled
     $.joy.zone.style.visibility = on ? 'visible' : 'hidden'
     $.joy.zone.style.pointerEvents = on ? '' : 'none'
-    if (!on) { $.joystick_release() }
+    if (!on) { $.release_held() }
   }
   // knob vector -> 8-way direction keys, with a deadzone and hysteresis
   TC.prototype.joystick_move = function (data) {
@@ -312,6 +547,7 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
   }
   TC.prototype.fetch = function () {
     const $ = this
+    if ($.joy) { return $.fetch_gamepad() }
     for (const key in $.button) {
       if ($.button[key].disabled) {
         if (typeof $.button[key].disabled === 'number') {
@@ -339,6 +575,69 @@ define(['LF/util', 'third_party/nipplejs'], function (util, nipplejs) {
         } else {
           $.button[key].el.style.border = '2px solid rgb(170, 255, 255)'
         }
+      }
+    }
+  }
+  // once a frame: the single-frame keys go up, then every circle is matched
+  // against the touches, each touch pressing the nearest circle it is on
+  TC.prototype.fetch_gamepad = function () {
+    const $ = this
+    const pulse = $.pulse
+    $.pulse = {}
+    for (const key in pulse) { $.sync_key(key) }
+    const gestures = $.gestures_on()
+    if (gestures) { $.gesture_frame() }
+    const targets = []
+    if (!$.hidden && TC.enabled) {
+      if (!gestures) {
+        for (const key in $.button) { targets.push($.button[key]) }
+      }
+      if ($.gameplay) {
+        for (let i = 0; i < $.macro.length; i++) {
+          if ($.macro[i].available) { targets.push($.macro[i]) }
+        }
+      }
+    }
+    const pressed = []
+    for (let i = 0; i < touches.length; i++) {
+      const T = touches[i]
+      // the left half belongs to the joystick, whose finger must not press buttons
+      if (T.clientX < window.innerWidth / 2) { continue }
+      if (gestures && T.identifier === $.gesture.id) { continue } // a finger on the pad
+      let best = null
+      let best_d = HIT
+      for (let j = 0; j < targets.length; j++) {
+        const d = Math.hypot(T.clientX - targets[j].x, T.clientY - targets[j].y) / targets[j].r
+        if (d < best_d) {
+          best = targets[j]
+          best_d = d
+        }
+      }
+      if (best) { pressed.push(best) }
+    }
+    for (const key in $.button) {
+      const B = $.button[key]
+      const down = pressed.indexOf(B) !== -1
+      if (down !== !!B.down) {
+        B.down = down
+        B.el.classList.toggle('pressed', down)
+        $.sync_key(key)
+      }
+    }
+    const mp = $.character && $.character.health ? $.character.health.mp : Infinity
+    for (let i = 0; i < $.macro.length; i++) {
+      const M = $.macro[i]
+      // greyed out while the character cannot pay for the move
+      const no_mp = M.available && mp < M.mp
+      if (no_mp !== !!M.no_mp) {
+        M.no_mp = no_mp
+        M.el.classList.toggle('no_mp', no_mp)
+      }
+      const down = pressed.indexOf(M) !== -1
+      if (down !== M.down) {
+        M.down = down
+        M.el.classList.toggle('pressed', down)
+        if (down) { $.macro_press(M) } else { $.macro_release(M) }
       }
     }
   }

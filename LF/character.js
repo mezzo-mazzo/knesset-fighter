@@ -1514,6 +1514,10 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
         }
       }
       $.setup()
+      // the touch gamepad lays out macro buttons for this character's special moves
+      if ($.con && $.con.attach_character) {
+        $.con.attach_character($)
+      }
     }
     character.prototype = new livingobject()
     character.prototype.constructor = character
@@ -1525,6 +1529,9 @@ define(['LF/livingobject', 'LF/global', 'core/combodec', 'core/util', 'LF/util']
       const $ = this
       livingobject.prototype.destroy.call(this)
       // (handled by manager.js) remove combo listener to controller
+      if ($.con && $.con.attach_character && $.con.character === $) {
+        $.con.attach_character(null)
+      }
     }
 
     // to emit a combo event

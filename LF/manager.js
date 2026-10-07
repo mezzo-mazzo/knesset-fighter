@@ -177,6 +177,7 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
           }
           controllers.touch.c.hide()
           controllers.touch.f.hide()
+          set_touch_scheme(Fsupport.localStorage && Fsupport.localStorage.getItem(TOUCH_SCHEME_KEY))
           // a mobile device always plays with the single touch gamepad
           settings.control[0].type = 'touch'
           settings.control[1].type = 'none'
@@ -485,6 +486,9 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
                 } else {
                   manager.alert('network game must run under http://')
                 }
+              } else if (action === 'touch_scheme') {
+                manager.sound.play('1/m_ok')
+                set_touch_scheme(Touchcontroller.scheme === 'gestures' ? 'buttons' : 'gestures')
               } else if (action === 'settings') {
                 manager.switch_UI('settings')
               } else if (action === 'feedback') {
@@ -1787,6 +1791,18 @@ define(['LF/global', 'LF/network', 'LF/soundpack', 'LF/match', 'LF/util', 'LF/to
      * is often reachable from several frames (standing, walking, defend), so
      * moves are deduped on input and frame name. D is the defend key.
     \*/
+    /* the touch gamepad scheme, 'buttons' or 'gestures', kept apart from
+       `settings` so that changing it does not reset the stored settings */
+    const TOUCH_SCHEME_KEY = 'F.LF/touch_scheme'
+    function set_touch_scheme(scheme) {
+      Touchcontroller.set_scheme(scheme)
+      const gestures = Touchcontroller.scheme === 'gestures'
+      util.div('touch_scheme_name').textContent = gestures ? 'Gestures' : 'Buttons'
+      util.div('touch_scheme_name_local').textContent = gestures ? 'מחוות' : 'כפתורים'
+      if (Fsupport.localStorage) {
+        Fsupport.localStorage.setItem(TOUCH_SCHEME_KEY, Touchcontroller.scheme)
+      }
+    }
     const MOVE_INPUTS = [
       ['hit_Fa', 'D → A'], ['hit_Fj', 'D → J'],
       ['hit_Ua', 'D ↑ A'], ['hit_Uj', 'D ↑ J'],

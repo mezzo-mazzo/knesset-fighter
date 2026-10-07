@@ -282,6 +282,99 @@ html, body
 	margin:0 auto;
 	width:1.7em; height:1.7em;
 }
+/* the gamepad: circles laid out radially around the bottom right corner
+   (touchcontroller.js sets their place, size and font size) */
+.touch_main, .touch_macro, .touch_pad
+{
+	box-sizing:border-box;
+	border-radius:50%;
+	background:rgba(0, 0, 0, 0.25);
+	transition:none;
+}
+.touch_controller_button.pressed
+{
+	border-color:rgb(255, 170, 170);
+	background:rgba(255, 170, 170, 0.3);
+}
+/* the special move macros: only during a match, only the character's own */
+.touch_macro
+{
+	display:none;
+	border:3px solid rgb(255, 196, 70);
+	background:rgba(230, 150, 20, 0.5);
+	color:#FFF3D6;
+	opacity:0.9;
+	line-height:1;
+}
+.LFroot.state-gameplay .touch_macro.available
+{
+	display:table;
+}
+/* not enough mp for the move */
+.touch_macro.no_mp
+{
+	border:2px dashed rgba(170, 170, 170, 0.7);
+	background:rgba(0, 0, 0, 0.45);
+	color:#888;
+	filter:grayscale(1);
+	opacity:0.35;
+}
+.touch_macro b
+{
+	font-weight:bold;
+	vertical-align:middle;
+}
+.touch_macro .touch_icon
+{
+	display:inline-block;
+	vertical-align:middle;
+	width:0.85em; height:0.85em;
+}
+/* the gestures scheme swaps the three buttons for one pad during a match */
+.touch_pad
+{
+	display:none;
+	transition:border-color 0.15s, background 0.15s;
+}
+.LFroot.state-gameplay.touch_gestures .touch_pad
+{
+	display:table;
+}
+.LFroot.state-gameplay.touch_gestures .touch_main
+{
+	display:none;
+}
+.touch_pad
+{
+	border-width:3px;
+}
+/* the corner cuts the pad, so the hints sit up and left of its centre */
+.touch_pad i
+{
+	display:inline-block;
+	position:relative;
+	left:-1.3em; top:-1.3em;
+	margin:0 0.45em;
+	font-style:normal;
+	vertical-align:top;
+}
+.touch_pad small
+{
+	display:block;
+	font-size:0.85em;
+	margin-top:0.2em;
+}
+.touch_pad.def
+{
+	border-color:rgb(170, 200, 255);
+	background:rgba(170, 200, 255, 0.3);
+}
+.touch_pad.jump, .touch_pad.att
+{
+	border-color:rgb(255, 170, 170);
+	background:rgba(255, 170, 170, 0.3);
+	transition:none;
+}
 /* fixed to the browser window, not the scaled container, so it stays the
    same size whatever the game scale is. top right, because the touch
    function keys (F1..F7) take the top left corner */
